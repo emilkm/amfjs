@@ -745,7 +745,7 @@ amf.Reader.prototype.readScriptObject = function() {
 amf.Reader.prototype.readArray = function() {
     var ref = this.readUInt29();
     if ((ref & 1) == 0) {
-        return this.getObject[ref >> 1];
+        return this.getObject(ref >> 1);
     }
     var len = (ref >> 1);
     var map = null;
