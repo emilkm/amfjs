@@ -64,3 +64,24 @@ amf.invoke("test", "ping", [],
 ```
 
 Sends and AMF request to the _test_ service, invoking the _ping_ method with no parameters. _onResult_ and _onStatus_ callback functions are also passed to the the _invoke_ method.
+
+
+The PHP service is very simple and looks like this.
+
+```php
+<?php
+class test
+{
+    public function ping()
+	{
+		return 'pong';
+	}
+}
+?>
+```
+
+If the AMF Client has not been assigned a _clientId_ by the server, a __flex.messaging.messages.CommandMessage__  with a _CLIENT_PING_OPERATION_ will be sent to the server in order to test connectivity over the current channel to the remote endpoint, and get a _clientId_ assigned.
+
+
+
+
