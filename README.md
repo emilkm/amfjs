@@ -85,7 +85,7 @@ If the AMF Client has not been assigned a _clientId_ by the server, a __flex.mes
 
 # Future development
 
-1. [EnyoJs](https://github.com/enyojs/enyo) [plugin](emilkm/enyo-amf)
+1. [EnyoJs](https://github.com/enyojs/enyo) [plugin](https://github.com/emilkm/enyo-amf)
 
 2. AMF Server library for node.js
 
