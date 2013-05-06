@@ -1,7 +1,7 @@
 amfjs
 =====
 
-AMFJS is an AMF 3 JavaScript library 
+AMFJS is an AMF 3 Client JavaScript library 
 
 It is based on Surrey's R-AMF (AMF 99) implementation https://code.google.com/p/r-amf/
 For more information on R-AMF (AMF 99), including Java (Spring) R-AMF server,
@@ -14,7 +14,7 @@ I found R-AMF while looking for a JavaScript AMF implementation. Unfortunately m
 
 ## Why not AMF 0
 
-I don't use it, and it only adds weight to the library.
+It only adds weight to the library, and I have not had any real need for it.
 
 # Enough talk, give me a basic example
 
@@ -80,8 +80,12 @@ class test
 ?>
 ```
 
-If the AMF Client has not been assigned a _clientId_ by the server, a __flex.messaging.messages.CommandMessage__  with a _CLIENT_PING_OPERATION_ will be sent to the server in order to test connectivity over the current channel to the remote endpoint, and get a _clientId_ assigned.
+If the AMF Client has not been assigned a _clientId_ by the server, a __flex.messaging.messages.CommandMessage__  with a _CLIENT_PING_OPERATION_ will be sent to the server first, in order to test connectivity over the current channel to the remote endpoint, and get a _clientId_ assigned.
 
 
+# Future development
 
+1. [EnyoJs](https://github.com/enyojs/enyo) [plugin](emilkm/enyo-amf)
+
+2. AMF Server library for node.js
 
