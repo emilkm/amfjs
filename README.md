@@ -4,19 +4,12 @@ amfjs
 AMFJS is an AMF 3 Client JavaScript library 
 
 It is based on Surrey's R-AMF (AMF 99) implementation https://code.google.com/p/r-amf/
-For more information on R-AMF (AMF 99), including Java (Spring) R-AMF server,
-see http://www.reignite.com.au/binary-communication-using-ajax-and-amf/ 
-and some of the other blog entries at http://www.reignite.com.au/blog/.
-
-## Why not AMF 99
-
-I found R-AMF while looking for a JavaScript AMF implementation. Unfortunately my server is based on AMFPHP, and that meant I could not use the R-AMF Java server. Implementing AMF 99 in PHP was not too hard, but after spending some time working on the C implementaition for the AMFEXT PHP extension I realised it would take longer than the time I had available for the project. Using AMF 99 also meant that the HTTP debugging proxy was not fully functional.
 
 ## Why not AMF 0
 
-It only adds weight to the library, and I have not had any real need for it.
+It only adds weight to the library. 
 
-# Enough talk, give me a basic example
+# Basic Example
 
 Here is a AMFJS Ping Pong example:
 
