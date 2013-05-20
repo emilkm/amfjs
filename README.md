@@ -76,9 +76,7 @@ class test
 If the AMF Client has not been assigned a _clientId_ by the server, a __flex.messaging.messages.CommandMessage__  with a _CLIENT_PING_OPERATION_ will be sent to the server first, in order to test connectivity over the current channel to the remote endpoint, and get a _clientId_ assigned.
 
 
-# Future development
+# Framework Integration
 
 1. [EnyoJs](https://github.com/enyojs/enyo) [plugin](https://github.com/emilkm/enyo-amf)
-
-2. AMF Server library for node.js
 
