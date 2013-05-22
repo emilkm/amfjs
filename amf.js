@@ -58,7 +58,7 @@ var amf = {
         return {
             _explicitType: "flex.messaging.io.amf.ActionMessage",
             version: 3,
-            headers: [],
+            headers: [{name:"mobile", mustUnderstand:false, data:true}],
             bodies: []
         };
     },
@@ -86,8 +86,8 @@ var amf = {
             _explicitType: "flex.messaging.messages.CommandMessage",
             destination: "",
             operation: 5,
-            body: [],
-            headers: {DSId:'nil'},
+            //body: [],
+            //headers: {DSId:'nil'},
             clientId: null
         };
     },
@@ -99,7 +99,7 @@ var amf = {
             source: "",
             operation: "",
             body: [],
-            headers: {DSId:'nil'},
+            //headers: {DSId:'nil'},
             clientId: null
         };
     },
@@ -130,7 +130,7 @@ var amf = {
             message.source = source;
             message.operation = operation;
             message.body = params;
-            message.headers['DSId'] = this.clientId;
+            //message.headers['DSId'] = this.clientId;
             message.clientId = this.clientId;
 
             for (var i = 0; i < this.headers.length; i++) {
@@ -186,14 +186,15 @@ var amf = {
                 if (!this.busy) {
                     this.busy = true;
                     this.setRequestHeader("Content-Type", "application/x-amf; charset=UTF-8");
-                    this.send(this.message);
+                    this.responseType = "arraybuffer";
+                    this.send(new Uint8Array(request.message));
                 }
             } else if (this.readyState === 4) {
                 this.onreadystatechange = amf.doNothing;
                 try {
                     if (this.status >= 200 && this.status <= 300) {
                         if (this.getResponseHeader("Content-type").indexOf("application/x-amf") > -1) {
-                            var deserializer = new amf.Deserializer(this.responseText);
+                            var deserializer = new amf.Deserializer(new Uint8Array(this.response));
                             var message = deserializer.readMessage();
                             for (var bodyIndex in message.bodies) {
                                 var body = message.bodies[bodyIndex];
@@ -202,7 +203,7 @@ var amf = {
                                         this.parent.clientId = body.data.clientId;
                                         for (var i = 0; i < this.parent.messageQueue.length; i++) {
                                             this.parent.messageQueue[i][0].bodies[0].data[0].clientId = this.parent.clientId;
-                                            this.parent.messageQueue[i][0].bodies[0].data[0].headers.DSId = this.parent.clientId;
+                                            //this.parent.messageQueue[i][0].bodies[0].data[0].headers.DSId = this.parent.clientId;
                                         }
                                     } else {
                                         onResult(body.data.body);
@@ -217,7 +218,6 @@ var amf = {
                             this.message = null;
                             this.parent._processQueue();
                         } else {
-                            //Content-type probably text/html
                             onStatus({faultCode:1, faultDetail:this.responseText, faultString:""});
                         }
                     } else {
@@ -244,7 +244,7 @@ amf.Writer = function() {
 };
 
 amf.Writer.prototype.write = function(v) {
-    this.data.push(String.fromCharCode(v));
+    this.data.push(v);
 };
 
 amf.Writer.prototype.writeShort = function(v) {
@@ -578,15 +578,7 @@ amf.Reader = function(data) {
 };
 
 amf.Reader.prototype.read = function() {
-    var v = this.data.charCodeAt(this.pos++);
-    var r = v;
-    if (r == 33) {
-        v = this.data.charCodeAt(this.pos++);
-        if (v != 33){
-            r = -v;
-        }
-    }
-    return r;
+    return this.data[this.pos++];
 };
 
 amf.Reader.prototype.readUnsignedShort = function() {
@@ -628,15 +620,15 @@ amf.Reader.prototype.readUTF = function(length) {
     var c1, c2, c3;
 
     while (this.pos < p + utflen) {
-        c1 = this.data.charCodeAt(this.pos++);
+        c1 = this.read();
         if (c1 < 128) {
             chararr.push(String.fromCharCode(c1));
         } else if (c1 > 2047) {
-            c2 = this.data.charCodeAt(this.pos++);
-            c3 = this.data.charCodeAt(this.pos++);
+            c2 = this.read();
+            c3 = this.read();
             chararr.push(String.fromCharCode(((c1 & 15) << 12) | ((c2 & 63) << 6) | (c3 & 63)));
         } else {
-            c2 = this.data.charCodeAt(this.pos++);
+            c2 = this.read();
             chararr.push(String.fromCharCode(((c1 & 31) << 6) | (c2 & 63)));
         }
     }
@@ -652,8 +644,7 @@ amf.Reader.prototype.reset = function() {
 
 amf.Reader.prototype.readObject = function() {
     var type = this.read();
-    var value = this.readObjectValue(type);
-    return value;
+    return this.readObjectValue(type);
 };
 
 amf.Reader.prototype.readString = function() {
@@ -726,16 +717,14 @@ amf.Reader.prototype.readScriptObject = function() {
         }
         this.rememberObject(obj);
         for (var i in traits.props) {
-            var value = this.readObject();
-            obj[traits.props[i]] = value;
+            obj[traits.props[i]] = this.readObject();
         }
         if ((ref & 8) == 8) {//dynamic
             for (; ;) {
                 var name = this.readString();
                 if (name == null || name.length == 0)
                     break;
-                var value = this.readObject();
-                obj[name] = value;
+                obj[name] = this.readObject();
             }
         }
         return obj;
@@ -748,7 +737,7 @@ amf.Reader.prototype.readArray = function() {
         return this.getObject(ref >> 1);
     }
     var len = (ref >> 1);
-    var map = null;
+    var map = null, i = 0;
     while (true) {
         var name = this.readString();
         if (!name) {
@@ -758,21 +747,18 @@ amf.Reader.prototype.readArray = function() {
             map = {};
             this.rememberObject(map);
         }
-        var value = this.readObject();
-        map[name] = value;
+        map[name] = this.readObject();
     }
     if (!map) {
         var array = new Array(len);
         this.rememberObject(array);
-        for (var i = 0; i < len; i++) {
-            var value = this.readObject();
-            array[i] = value;
+        for (i = 0; i < len; i++) {
+            array[i] = this.readObject();
         }
         return array;
     } else {
-        for (var i = 0; i < len; i++) {
-            var value = this.readObject();
-            map[i] = value;
+        for (i = 0; i < len; i++) {
+            map[i] = this.readObject();
         }
         return map;
     }
@@ -818,8 +804,7 @@ amf.Reader.prototype.readMap = function() {
         this.rememberObject(map);
         var name = this.readObject();
         while (name != null) {
-            var value = this.readObject();
-            map[name] = value;
+            map[name] = this.readObject();
             name = this.readObject();
         }
     }
@@ -912,7 +897,8 @@ amf.Serializer.prototype.writeMessage = function(message) {
     } catch (error) {
         console.log(error);
     }
-    return this.writer.getResult();
+    //return this.writer.getResult();
+    return this.writer.data;
 };
 
 amf.Serializer.prototype.writeObject = function(object) {
@@ -924,7 +910,9 @@ amf.Serializer.prototype.writeHeader = function(header) {
     this.writer.writeBoolean(header.mustUnderstand);
     this.writer.writeInt(1); //UNKNOWN_CONTENT_LENGTH used to be -1
     this.writer.reset();
-    this.writer.writeObject(header.data);
+    //this.writer.writeObject(header.data);
+    this.writer.write(1); //boolean amf0 marker
+    this.writer.writeBoolean(true);
 };
 
 amf.Serializer.prototype.writeBody = function(body) {
@@ -950,8 +938,7 @@ amf.Deserializer = function(data) {
 
 amf.Deserializer.prototype.readMessage = function() {
     var message = new amf.ActionMessage();
-    var version = this.reader.readUnsignedShort();
-    message.version = version;
+    message.version = this.reader.readUnsignedShort();
     var headerCount = this.reader.readUnsignedShort();
     for (var i = 0; i < headerCount; i++) {
         message.headers.push(this.readHeader());
@@ -965,27 +952,21 @@ amf.Deserializer.prototype.readMessage = function() {
 
 amf.Deserializer.prototype.readHeader = function() {
     var header = new amf.MessageHeader();
-    var name = this.reader.readUTF();
-    header.name = name;
-    var mustUnderstand = this.reader.readBoolean();
-    header.mustUnderstand = mustUnderstand;
+    header.name = this.reader.readUTF();
+    header.mustUnderstand = this.reader.readBoolean();
     this.reader.pos += 4; //length
-    this.worker.reset();
-    var data = this.readObject();
-    header.data = data;
+    this.reader.reset();
+    header.data = this.readObject();
     return header;
 };
 
 amf.Deserializer.prototype.readBody = function() {
     var body = new amf.MessageBody();
-    var targetURI = this.reader.readUTF();
-    body.targetURI = targetURI;
-    var responseURI = this.reader.readUTF();
-    body.responseURI = responseURI;
+    body.targetURI = this.reader.readUTF();
+    body.responseURI = this.reader.readUTF();
     this.reader.pos += 4; //length
     this.reader.reset();
-    var data = this.readObject();
-    body.data = data;
+    body.data = this.readObject();
     return body;
 };
 
