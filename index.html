@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset='utf-8'>
+    <meta http-equiv="X-UA-Compatible" content="chrome=1">
+
+    <link rel="stylesheet" type="text/css" href="stylesheets/stylesheet.css" media="screen" />
+    <link rel="stylesheet" type="text/css" href="stylesheets/pygment_trac.css" media="screen" />
+    <link rel="stylesheet" type="text/css" href="stylesheets/print.css" media="print" />
+
+    <title>amfjs by emilkm</title>
+  </head>
+
+  <body>
+
+    <header>
+      <div class="container">
+        <h1>amfjs</h1>
+        <h2>A JavaScript AMF 3 Client library</h2>
+
+        <section id="downloads">
+          <a href="https://github.com/emilkm/amfjs/zipball/master" class="btn">Download as .zip</a>
+          <a href="https://github.com/emilkm/amfjs/tarball/master" class="btn">Download as .tar.gz</a>
+          <a href="https://github.com/emilkm/amfjs" class="btn btn-github"><span class="icon"></span>View on GitHub</a>
+        </section>
+      </div>
+    </header>
+
+    <div class="container">
+      <section id="main_content">
+        <h1>amfjs</h1>
+
+<p>AMFJS is an AMF 3 Client JavaScript library </p>
+
+<h2>Why no AMF 0</h2>
+
+<p>The library does enough AMF 0 to be able to send message headers, anything more would only add weight. </p>
+
+<h1>Basic Example</h1>
+
+<p>Here is a AMFJS Ping Pong example:</p>
+
+<div class="highlight"><pre><span class="cp">&lt;!doctype html&gt;</span>
+<span class="nt">&lt;html&gt;</span>
+<span class="nt">&lt;head&gt;</span>
+    <span class="nt">&lt;title&gt;</span>AMFJS<span class="nt">&lt;/title&gt;</span>
+    <span class="nt">&lt;script </span><span class="na">src=</span><span class="s">"amf.js"</span> <span class="na">type=</span><span class="s">"text/javascript"</span><span class="nt">&gt;&lt;/script&gt;</span>
+<span class="nt">&lt;/head&gt;</span>
+<span class="nt">&lt;body&gt;</span>
+<span class="nt">&lt;script </span><span class="na">type=</span><span class="s">"text/javascript"</span><span class="nt">&gt;</span>
+        <span class="nx">amf</span><span class="p">.</span><span class="nx">init</span><span class="p">(</span><span class="s2">"amfphp"</span><span class="p">,</span> <span class="s2">"http://127.0.0.1/server/gateway.php"</span><span class="p">);</span>
+        <span class="nx">amf</span><span class="p">.</span><span class="nx">invoke</span><span class="p">(</span><span class="s2">"test"</span><span class="p">,</span> <span class="s2">"ping"</span><span class="p">,</span> <span class="p">[],</span>
+            <span class="kd">function</span><span class="p">(</span><span class="nx">data</span><span class="p">)</span> <span class="p">{</span>
+                <span class="nx">console</span><span class="p">.</span><span class="nx">log</span><span class="p">(</span><span class="nx">data</span><span class="p">);</span>
+            <span class="p">},</span>
+            <span class="kd">function</span><span class="p">(</span><span class="nx">data</span><span class="p">)</span> <span class="p">{</span>
+                <span class="nx">console</span><span class="p">.</span><span class="nx">log</span><span class="p">(</span><span class="s2">"ping errror"</span><span class="p">);</span>
+            <span class="p">}</span>
+        <span class="p">);</span>
+<span class="nt">&lt;/script&gt;</span>
+<span class="nt">&lt;/body&gt;</span>
+<span class="nt">&lt;/html&gt;</span>
+</pre></div>
+
+<p>This example loads an amf.js, which makes the amf global object available.</p>
+
+<div class="highlight"><pre><span class="nx">amf</span><span class="p">.</span><span class="nx">init</span><span class="p">(</span><span class="s2">"amfphp"</span><span class="p">,</span> <span class="s2">"http://127.0.0.1/server/gateway.php"</span><span class="p">);</span>
+</pre></div>
+
+<p><strong>amf.init</strong> sets the <em>destination</em> and <em>endpoint</em> of the AMF Client.</p>
+
+<div class="highlight"><pre><span class="nx">amf</span><span class="p">.</span><span class="nx">invoke</span><span class="p">(</span><span class="s2">"test"</span><span class="p">,</span> <span class="s2">"ping"</span><span class="p">,</span> <span class="p">[],</span>
+    <span class="kd">function</span><span class="p">(</span><span class="nx">data</span><span class="p">)</span> <span class="p">{</span>
+        <span class="nx">console</span><span class="p">.</span><span class="nx">log</span><span class="p">(</span><span class="nx">data</span><span class="p">);</span>
+    <span class="p">},</span>
+    <span class="kd">function</span><span class="p">(</span><span class="nx">data</span><span class="p">)</span> <span class="p">{</span>
+        <span class="nx">console</span><span class="p">.</span><span class="nx">log</span><span class="p">(</span><span class="s2">"ping errror"</span><span class="p">);</span>
+    <span class="p">}</span>
+<span class="p">);</span>
+</pre></div>
+
+<p>Sends and AMF request to the <em>test</em> service, invoking the <em>ping</em> method with no parameters. <em>onResult</em> and <em>onStatus</em> callback functions are also passed to the the <em>invoke</em> method.</p>
+
+<p>The PHP service is very simple and looks like this.</p>
+
+<div class="highlight"><pre><span class="o">&lt;?</span><span class="nx">php</span>
+<span class="k">class</span> <span class="nc">test</span>
+<span class="p">{</span>
+    <span class="k">public</span> <span class="k">function</span> <span class="nf">ping</span><span class="p">()</span>
+    <span class="p">{</span>
+        <span class="k">return</span> <span class="s1">'pong'</span><span class="p">;</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+<span class="cp">?&gt;</span><span class="x"></span>
+</pre></div>
+
+<p>If the AMF Client has not been assigned a <em>clientId</em> by the server, a <strong>flex.messaging.messages.CommandMessage</strong>  with a <em>CLIENT_PING_OPERATION</em> will be sent to the server first, in order to test connectivity over the current channel to the remote endpoint, and get a <em>clientId</em> assigned.</p>
+
+<h1>Framework Integration</h1>
+
+<ol>
+<li>
+<a href="https://github.com/enyojs/enyo">EnyoJs</a> <a href="https://github.com/emilkm/enyo-amf">plugin</a>
+</li>
+</ol>
+      </section>
+    </div>
+
+    
+  </body>
+</html>
