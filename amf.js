@@ -729,8 +729,9 @@ amf.Reader.prototype.readScriptObject = function() {
         if ((ref & 8) == 8) {//dynamic
             for (; ;) {
                 var name = this.readString();
-                if (name == null || name.length == 0)
+                if (name == null || name.length == 0) {
                     break;
+                }
                 obj[name] = this.readObject();
             }
         }
