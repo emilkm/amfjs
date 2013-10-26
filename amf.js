@@ -32,6 +32,7 @@ var amf = {
     requestPoolSize: 6,
     requestPool: [],
     messageQueue: [],
+    sendMessageId: false,
     clientId: null,
     sequence: 1,
     destination: "",
@@ -130,6 +131,9 @@ var amf = {
             message.source = source;
             message.operation = operation;
             message.body = params;
+            if (this.sendMessageId) {
+                message.messageId = amf.uuid(0, 0);
+            }
             //message.headers['DSId'] = this.clientId;
             message.clientId = this.clientId;
 
@@ -716,6 +720,9 @@ amf.Reader.prototype.readScriptObject = function() {
             obj[amf.CONST.CLASS_ALIAS] = traits[amf.CONST.CLASS_ALIAS];
         }
         this.rememberObject(obj);
+        if ((ref & 4) == 4) {//externalizable
+            throw "Externalizable objects not supported.";
+        }
         for (var i in traits.props) {
             obj[traits.props[i]] = this.readObject();
         }
