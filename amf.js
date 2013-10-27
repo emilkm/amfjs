@@ -720,19 +720,20 @@ amf.Reader.prototype.readScriptObject = function() {
             obj[amf.CONST.CLASS_ALIAS] = traits[amf.CONST.CLASS_ALIAS];
         }
         this.rememberObject(obj);
-        if ((ref & 4) == 4) {//externalizable
-            throw "Externalizable objects not supported.";
-        }
-        for (var i in traits.props) {
-            obj[traits.props[i]] = this.readObject();
-        }
-        if ((ref & 8) == 8) {//dynamic
-            for (; ;) {
-                var name = this.readString();
-                if (name == null || name.length == 0) {
-                    break;
+        if ((ref & 4) == 4 && obj[amf.CONST.CLASS_ALIAS] == "flex.messaging.io.ArrayCollection") {//externalizable
+            return this.readObject();
+        } else {
+            for (var i in traits.props) {
+                obj[traits.props[i]] = this.readObject();
+            }
+            if ((ref & 8) == 8) {//dynamic
+                for (; ;) {
+                    var name = this.readString();
+                    if (name == null || name.length == 0) {
+                        break;
+                    }
+                    obj[name] = this.readObject();
                 }
-                obj[name] = this.readObject();
             }
         }
         return obj;
