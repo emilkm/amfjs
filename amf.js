@@ -26,7 +26,8 @@ var amf = {
         UINT29_MASK : 536870911,
         INT28_MAX_VALUE : 268435455,
         INT28_MIN_VALUE : -268435456,
-        CLASS_ALIAS : "_explicitType"
+        CLASS_ALIAS : "_explicitType",
+		EXTERNALIZED_FIELD : "_externalizedData"
     },
     requestTimeout: 30000, //30 seconds
     requestPoolSize: 6,
@@ -720,8 +721,14 @@ amf.Reader.prototype.readScriptObject = function() {
             obj[amf.CONST.CLASS_ALIAS] = traits[amf.CONST.CLASS_ALIAS];
         }
         this.rememberObject(obj);
-        if ((ref & 4) == 4 && obj[amf.CONST.CLASS_ALIAS] == "flex.messaging.io.ArrayCollection") {//externalizable
-            return this.readObject();
+        if ((ref & 4) == 4) {//externalizable
+			if (obj[amf.CONST.CLASS_ALIAS] == "flex.messaging.io.ArrayCollection"
+				|| obj[amf.CONST.CLASS_ALIAS] == "flex.messaging.io.ObjectProxy"
+			) {
+				return this.readObject();
+			} else {
+				obj[amf.CONST.EXTERNALIZED_FIELD] = this.readObject();
+			}
         } else {
             for (var i in traits.props) {
                 obj[traits.props[i]] = this.readObject();
