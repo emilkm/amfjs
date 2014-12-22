@@ -60,7 +60,7 @@ var amf = {
         return {
             _explicitType: "flex.messaging.io.amf.ActionMessage",
             version: 3,
-            headers: [{name:"mobile", mustUnderstand:false, data:true}],
+            headers: [],
             bodies: []
         };
     },
@@ -972,7 +972,11 @@ amf.Deserializer.prototype.readHeader = function() {
     header.mustUnderstand = this.reader.readBoolean();
     this.reader.pos += 4; //length
     this.reader.reset();
-    header.data = this.readObject();
+    var type = this.reader.read();
+    if (type != 2) { //amf0 string
+        throw "Only string header data supported.";
+    };
+    header.data = this.reader.readUTF();
     return header;
 };
 
