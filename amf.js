@@ -27,7 +27,7 @@ var amf = {
         INT28_MAX_VALUE : 268435455,
         INT28_MIN_VALUE : -268435456,
         CLASS_ALIAS : "_explicitType",
-		EXTERNALIZED_FIELD : "_externalizedData"
+        EXTERNALIZED_FIELD : "_externalizedData"
     },
     requestTimeout: 30000, //30 seconds
     requestPoolSize: 6,
