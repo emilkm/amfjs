@@ -7,7 +7,7 @@ It is based on Surrey's R-AMF (AMF 99) implementation https://code.google.com/p/
 
 ## Why no AMF 0
 
-The library does enough AMF 0 to be able to send message headers, anything more would only add weight. 
+The library does enough AMF 0 to be able to send and receive packet headers. 
 
 # Basic Example
 
@@ -22,8 +22,8 @@ Here is a AMFJS Ping Pong example:
 </head>
 <body>
 	<script type="text/javascript">
-		amf.init("amfphp", "http://127.0.0.1/server/gateway.php");
-        amf.invoke("test", "ping", [],
+		var amfClient = new amf.Client("amfphp", "http://127.0.0.1/server/gateway.php");
+        amfClient.invoke("test", "ping", [],
             function(data) {
                 console.log(data);
             },
@@ -36,17 +36,17 @@ Here is a AMFJS Ping Pong example:
 </html>
 ```
 
-This example loads an amf.js, which makes the amf global object available.
+This example loads amf.js, which makes the amf global object available.
 
 ```javascript
-amf.init("amfphp", "http://127.0.0.1/server/gateway.php");
+var amfClient = amf.Client("amfphp", "http://127.0.0.1/server/gateway.php");
 ```
 
-__amf.init__ sets the _destination_ and _endpoint_ of the AMF Client.
+A new AMF Client instance is created, with a _destination_ of "amfphp", and _endpoint_ of "http://127.0.0.1/server/gateway.php".
 
 
 ```javascript
-amf.invoke("test", "ping", [],
+amfClient.invoke("test", "ping", [],
     function(data) {
         console.log(data);
     },
