@@ -203,35 +203,36 @@ amf.Client.prototype._send = function(xmlhttpRequest, pendingRequest) {
         } else if (this.readyState === 4) {
             this.onreadystatechange = amf.doNothing;
             try {
-                if (this.status >= 200 && this.status <= 300) {
-                    if (this.getResponseHeader("Content-type").indexOf("application/x-amf") > -1) {
-                        var deserializer = new amf.Deserializer(new Uint8Array(this.response));
-                        var message = deserializer.readMessage();
-                        for (var bodyIndex in message.bodies) {
-                            var body = message.bodies[bodyIndex];
-                            if (body.targetURI && body.targetURI.indexOf("/onResult") > -1) {
-                                if (body.targetURI == "/1/onResult") {
-                                    this.parent.clientId = body.data.clientId;
-                                } else {
-                                    pendingRequest.onResult(body.data.body);
-                                }
+                if (this.status >= 200 && this.status <= 300
+                    && this.responseType == "arraybuffer"
+                    && this.getResponseHeader("Content-type").indexOf("application/x-amf") > -1
+                ) {
+                    var deserializer = new amf.Deserializer(new Uint8Array(this.response));
+                    var message = deserializer.readMessage();
+                    for (var bodyIndex in message.bodies) {
+                        var body = message.bodies[bodyIndex];
+                        if (body.targetURI && body.targetURI.indexOf("/onResult") > -1) {
+                            if (body.targetURI == "/1/onResult") {
+                                this.parent.clientId = body.data.clientId;
                             } else {
-                                if (body.data._explicitType == "flex.messaging.messages.ErrorMessage") {
-                                    pendingRequest.onStatus({faultCode:body.data.faultCode, faultDetail:body.data.faultDetail, faultString:body.data.faultString});
-                                }
+                                pendingRequest.onResult(body.data.body);
+                            }
+                        } else {
+                            if (body.data._explicitType == "flex.messaging.messages.ErrorMessage") {
+                                pendingRequest.onStatus({faultCode:body.data.faultCode, faultDetail:body.data.faultDetail, faultString:body.data.faultString});
                             }
                         }
-                        this.busy = false;
-                        this.message = null;
-                        this.parent._processQueue();
-                    } else {
-                        pendingRequest.onStatus({faultCode:1, faultDetail:this.responseText, faultString:""});
                     }
+                    this.busy = false;
+                    this.message = null;
+                    this.parent._processQueue();
+                } else if (this.status == 0 || (this.responseType != "" && this.responseType == "text")) {
+                    pendingRequest.onStatus({faultCode:0, faultDetail:"Invalid XMLHttpRequest response status or type.", faultString:"Invalid Response."});
                 } else {
-                    pendingRequest.onStatus({faultCode:1, faultDetail:this.responseText, faultString:""});
+                    pendingRequest.onStatus({faultCode:1, faultDetail:this.responseText, faultString:"Invalid Response."});
                 }
             } catch (e) {
-                pendingRequest.onStatus({faultCode:2, faultDetail:"", faultString:""});
+                pendingRequest.onStatus({faultCode:2, faultDetail:"", faultString:"Unknown Error."});
             }
         }
     };
