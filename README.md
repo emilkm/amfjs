@@ -17,12 +17,12 @@ Here is a AMFJS Ping Pong example:
 <!doctype html>
 <html>
 <head>
-	<title>AMFJS</title>
-	<script src="amf.js" type="text/javascript"></script>
+    <title>AMFJS</title>
+    <script src="amf.js" type="text/javascript"></script>
 </head>
 <body>
-	<script type="text/javascript">
-		var amfClient = new amf.Client("amfphp", "http://127.0.0.1/server/gateway.php");
+    <script type="text/javascript">
+        var amfClient = new amf.Client("amfphp", "http://127.0.0.1/server/gateway.php");
         amfClient.invoke("test", "ping", [],
             function(data) {
                 console.log(data);
@@ -31,7 +31,7 @@ Here is a AMFJS Ping Pong example:
                 console.log("ping errror");
             }
         );
-	</script>
+    </script>
 </body>
 </html>
 ```
@@ -42,7 +42,7 @@ This example loads amf.js, which makes the amf global object available.
 var amfClient = amf.Client("amfphp", "http://127.0.0.1/server/gateway.php");
 ```
 
-A new AMF Client instance is created, with a _destination_ of "amfphp", and _endpoint_ of "http://127.0.0.1/server/gateway.php".
+A new AMF Client instance is created, and initialized with the desired  _destination_ and _endpoint_.
 
 
 ```javascript
@@ -66,9 +66,9 @@ The PHP service is very simple and looks like this.
 class test
 {
     public function ping()
-	{
-		return 'pong';
-	}
+    {
+        return 'pong';
+    }
 }
 ?>
 ```
