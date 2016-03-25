@@ -90,13 +90,15 @@ var amf = {
         }
     },
 
-    PendingRequest: function(source, operation, params, onResult, onStatus) {
+    Request: function(source, operation, params, onResult, onStatus, token, holdQueue) {
         return {
             source: source,
             operation: operation,
             params: params,
             onResult: onResult,
-            onStatus: onStatus
+            onStatus: onStatus,
+            token: token,
+            holdQueue: holdQueue
         }
     }
 
@@ -107,34 +109,61 @@ amf.Client = function(destination, endpoint, timeout) {
     this.messageQueue = [];
     this.sendMessageId = true;
     this.clientId = null;
-    this.sequence = 1;
+    this.sessionId = null;
+    this.sequence = 0;
     this.destination = destination;
     this.endpoint = endpoint;
     this.headers = null;
+    this.sidPropagation = "header";
+    this.request = null;
 };
 
 amf.Client.prototype.addHeader = function(name, value) {
     var header = {};
     header[name] = value;
+    if (this.headers === null) {
+        this.headers = [];
+    }
     this.headers.push(header);
 };
 
-amf.Client.prototype.createMessage = function(pendingRequest) {
+amf.Client.prototype.setSessionId = function(value, releaseQueue) {
+    this.sessionId = value;
+
+    if (this.sidPropagation == "header") {
+        this.addHeader('sID', this.sessionId);
+    } else {
+        this.endpoint += '?sID=' + this.sessionId;
+    }
+
+    if (releaseQueue === true) {
+        this.releaseQueue();
+    }
+};
+
+amf.Client.prototype.releaseQueue = function() {
+    if (this.request.holdQueue) {
+        this._processQueue();
+    }
+};
+
+amf.Client.prototype.createMessage = function(request) {
     var actionMessage = new amf.ActionMessage();
     var messageBody = new amf.MessageBody();
     var message;
-    if (pendingRequest.source == "command" && pendingRequest.operation == "ping") {
-        this.sequence = 1;
-        messageBody.responseURI = "/" + this.sequence++;
+    if (this.sequence == 0) {
+        this.sequence++;
+        messageBody.responseURI = "/" + this.sequence;
         message = new amf.CommandMessage();
         message.destination = this.destination;
     } else {
-        messageBody.responseURI = "/" + this.sequence++;
+        this.sequence++;
+        messageBody.responseURI = "/" + this.sequence;
         message = new amf.RemotingMessage();
         message.destination = this.destination;
-        message.source = pendingRequest.source;
-        message.operation = pendingRequest.operation;
-        message.body = pendingRequest.params;
+        message.source = request.source;
+        message.operation = request.operation;
+        message.body = request.params;
         if (this.sendMessageId) {
             message.messageId = amf.uuid(0, 0);
         }
@@ -156,49 +185,52 @@ amf.Client.prototype.createMessage = function(pendingRequest) {
     return actionMessage;
 };
 
-amf.Client.prototype.invoke = function(source, operation, params, onResult, onStatus) {
-    if (this.clientId == null && this.messageQueue.length == 0) {
-        this.messageQueue.push(new amf.PendingRequest("command", "ping", params, onResult, onStatus));
+amf.Client.prototype.invoke = function(source, operation, params, onResult, onStatus, token, holdQueue) {
+    if (this.clientId == null && this.sequence == 0 && this.messageQueue.length == 0) {
+        this.messageQueue.push(new amf.Request("command", "ping", params, onResult, onStatus, "command.ping"));
+        this.messageQueue.push(new amf.Request(source, operation, params, onResult, onStatus, token, holdQueue));
         this._processQueue();
+        return;
     }
-    this.messageQueue.push(new amf.PendingRequest(source, operation, params, onResult, onStatus));
-    if (this.clientId != null) {
-        this._processQueue();
+    this.messageQueue.push(new amf.Request(source, operation, params, onResult, onStatus, token, holdQueue));
+    if (this.clientId == null || (this.request != null && this.request.holdQueue)) {
+        return;
     }
+    this._processQueue();
 };
 
 amf.Client.prototype._processQueue = function() {
-    var i, request;
+    var i, xhr;
     for (i = 0; i < amf.requestPoolSize && this.messageQueue.length > 0; i++) {
         if (amf.requestPool.length == i) {
-            request = new XMLHttpRequest();
-            request.parent = this;
-            request.busy = false;
-            amf.requestPool.push(request);
+            xhr = new XMLHttpRequest();
+            xhr.parent = this;
+            xhr.busy = false;
+            amf.requestPool.push(xhr);
         } else {
-            request = amf.requestPool[i];
+            xhr = amf.requestPool[i];
         }
-        if (!request.busy) {
-            var pendingRequest = this.messageQueue.shift();
-            this._send(request, pendingRequest);
-            if (pendingRequest.source == "command" && pendingRequest.operation == "ping") { //ping
+        if (!xhr.busy) {
+            this.request = this.messageQueue.shift();
+            this._send(xhr, this.request);
+            if (this.sequence == 1 || (this.request != null && this.request.holdQueue)) {
                 return;
             }
         }
     }
 };
 
-amf.Client.prototype._send = function(xmlhttpRequest, pendingRequest) {
-    var message = this.createMessage(pendingRequest);
+amf.Client.prototype._send = function(xhr, request) {
+    var message = this.createMessage(request);
     var serializer = new amf.Serializer();
-    xmlhttpRequest.message = serializer.writeMessage(message);
-    xmlhttpRequest.onreadystatechange = function() {
+    xhr.message = serializer.writeMessage(message);
+    xhr.onreadystatechange = function() {
         if (this.readyState === 1) {
             if (!this.busy) {
                 this.busy = true;
                 this.setRequestHeader("Content-Type", "application/x-amf; charset=UTF-8");
                 this.responseType = "arraybuffer";
-                this.send(new Uint8Array(xmlhttpRequest.message));
+                this.send(new Uint8Array(xhr.message));
             }
         } else if (this.readyState === 4) {
             this.onreadystatechange = amf.doNothing;
@@ -215,28 +247,30 @@ amf.Client.prototype._send = function(xmlhttpRequest, pendingRequest) {
                             if (body.targetURI == "/1/onResult") {
                                 this.parent.clientId = body.data.clientId;
                             } else {
-                                pendingRequest.onResult(body.data.body);
+                                request.onResult(body.data.body, request.token);
                             }
                         } else {
                             if (body.data._explicitType == "flex.messaging.messages.ErrorMessage") {
-                                pendingRequest.onStatus({faultCode:body.data.faultCode, faultDetail:body.data.faultDetail, faultString:body.data.faultString});
+                                request.onStatus({faultCode:body.data.faultCode, faultDetail:body.data.faultDetail, faultString:body.data.faultString}, request.token);
                             }
                         }
                     }
                     this.busy = false;
                     this.message = null;
-                    this.parent._processQueue();
+                    if (!request.holdQueue) {
+                        this.parent._processQueue();
+                    }
                 } else if (this.status == 0 || (this.responseType != "" && this.responseType == "text")) {
-                    pendingRequest.onStatus({faultCode:0, faultDetail:"Invalid XMLHttpRequest response status or type.", faultString:"Invalid Response."});
+                    request.onStatus({faultCode:0, faultDetail:"Invalid XMLHttpRequest response status or type.", faultString:"Invalid Response."}, request.token);
                 } else {
-                    pendingRequest.onStatus({faultCode:1, faultDetail:this.responseText, faultString:"Invalid Response."});
+                    request.onStatus({faultCode:1, faultDetail:this.responseText, faultString:"Invalid Response."}, request.token);
                 }
             } catch (e) {
-                pendingRequest.onStatus({faultCode:2, faultDetail:"", faultString:"Unknown Error."});
+                request.onStatus({faultCode:2, faultDetail:"", faultString:"Unknown Error."}, request.token);
             }
         }
     };
-    xmlhttpRequest.open("POST", this.endpoint, true);
+    xhr.open("POST", this.endpoint, true);
 };
 
 amf.Writer = function() {
