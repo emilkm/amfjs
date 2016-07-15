@@ -3,8 +3,6 @@ amfjs
 
 AMFJS is an AMF 3 Client JavaScript library 
 
-It is based on Surrey's R-AMF (AMF 99) implementation https://code.google.com/p/r-amf/
-
 ## Why no AMF 0
 
 The library does enough AMF 0 to be able to send and receive packet headers. 
