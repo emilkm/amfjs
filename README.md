@@ -21,11 +21,13 @@ Here is a AMFJS Ping Pong example:
 <body>
     <script type="text/javascript">
         var amfClient = new amf.Client("amfphp", "http://127.0.0.1/server/gateway.php");
-        amfClient.invoke("test", "ping", [],
-            function(data) {
-                console.log(data);
+        var p = amfClient.invoke("test", "ping", []);
+        
+        p.then(
+            function(res) {
+                console.log(res.data);
             },
-            function(data) {
+            function(err) {
                 console.log("ping errror");
             }
         );
@@ -44,17 +46,19 @@ A new AMF Client instance is created, and initialized with the desired  _destina
 
 
 ```javascript
-amfClient.invoke("test", "ping", [],
-    function(data) {
-        console.log(data);
+var p = amfClient.invoke("test", "ping", []);
+
+p.then(
+    function(res) {
+        console.log(res.data);
     },
-    function(data) {
+    function(err) {
         console.log("ping errror");
     }
 );
 ```
 
-Sends and AMF request to the _test_ service, invoking the _ping_ method with no parameters. _onResult_ and _onStatus_ callback functions are also passed to the the _invoke_ method.
+Sends and AMF request to the _test_ service, invoking the _ping_ method with no parameters. The _invoke_ method returns a Promise, which is used to handle the response or error.
 
 
 The PHP service is very simple and looks like this.
