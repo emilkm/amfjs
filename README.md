@@ -1,9 +1,9 @@
 amfjs
 =====
 
-AMFJS is an AMF 3 Client JavaScript library 
+AMFJS is an AMF Client JavaScript library 
 
-## Why no AMF 0
+## Limited AMF 0
 
 The library does enough AMF 0 to be able to send and receive packet headers. 
 

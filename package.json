@@ -1,0 +1,9 @@
+{
+  "name": "amfjs",
+  "description": "AMFJS is an AMF Client JavaScript library",
+  "version": "0.0.9",
+  "author": "Emil Malinov <emilkm@gmail.com> (http://github.com/emilkm)",
+  "devDependencies": {
+    "tape": "^4.6.2"
+  }
+}
