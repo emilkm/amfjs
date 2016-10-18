@@ -49,7 +49,7 @@ test("writeAmf3VectorInt", function (t) {
   var writer = new amf.Writer();
   writer.writeObject(obj);
   writer.data.unshift(17);
-  t.equal("[Vector of int (variable)]", obj.value.toString());
+  t.equal("[Vector (int)]", obj.value.toString());
   t.equal(amf.const.AMF3_VECTOR_INT, obj.value.type);
   t.equal(false, obj.value.fixed);
   t.equal(3, obj.value.length);
@@ -65,7 +65,7 @@ test("writeAmf3VectorIntNegative", function (t) {
   var writer = new amf.Writer();
   writer.writeObject(obj);
   writer.data.unshift(17);
-  t.equal("[Vector of int (variable)]", obj.value.toString());
+  t.equal("[Vector (int)]", obj.value.toString());
   t.equal(amf.const.AMF3_VECTOR_INT, obj.value.type);
   t.equal(false, obj.value.fixed);
   t.equal(3, obj.value.length);
@@ -75,13 +75,13 @@ test("writeAmf3VectorIntNegative", function (t) {
   t.end();
 });
 
-test("writeAmf3VectorIntDouble", function (t) {
+test("writeAmf3VectorDouble", function (t) {
   var data = [].slice.call(fs.readFileSync("asset/value/vector-double.bin3"));
   var obj = {value: amf.toVector(amf.const.AMF3_VECTOR_DOUBLE, [-31.57, 0, 31.57])};
   var writer = new amf.Writer();
   writer.writeObject(obj);
   writer.data.unshift(17);
-  t.equal("[Vector of double (variable)]", obj.value.toString());
+  t.equal("[Vector (double)]", obj.value.toString());
   t.equal(amf.const.AMF3_VECTOR_DOUBLE, obj.value.type);
   t.equal(false, obj.value.fixed);
   t.equal(3, obj.value.length);
@@ -90,3 +90,20 @@ test("writeAmf3VectorIntDouble", function (t) {
   t.equal(31.57, obj.value[2]);
   t.end();
 });
+
+test("writeAmf3VectorObject", function (t) {
+  var data = [].slice.call(fs.readFileSync("asset/value/vector-object.bin3"));
+  var obj = {value: amf.toVector(amf.const.AMF3_VECTOR_OBJECT, [{value: 1}, {value: 2}, {value: 3}])};
+  var writer = new amf.Writer();
+  writer.writeObject(obj);
+  writer.data.unshift(17);
+  t.equal("[Vector (object)]", obj.value.toString());
+  t.equal(amf.const.AMF3_VECTOR_OBJECT, obj.value.type);
+  t.equal(false, obj.value.fixed);
+  t.equal(3, obj.value.length);
+  t.equal(1, obj.value[0].value);
+  t.equal(2, obj.value[1].value);
+  t.equal(3, obj.value[2].value);
+  t.end();
+});
+

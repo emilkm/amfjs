@@ -754,11 +754,11 @@ amf.Writer.prototype.writeVector = function(v) {
     var className = "";
     if (len > 0) {
       // TODO: how much of the PHP logic can we do here
-      // className = v[0].constructor.name;   // == "Foo" Foo.name
+      className = v[0].constructor.name;
     }
     this.writeStringWithoutType(className);
     for (i = 0; i < len; i++) {
-      this.writeCustomObject(v[i]);
+      this.writeObject(v[i]);
     }
   } else if (v.type == amf.const.AMF3_VECTOR_INT) {
     for (i = 0; i < len; i++) {
@@ -1301,7 +1301,7 @@ amf.toVector = function(type, array, fixed) {
         typestr = "object";
         break;
     }
-    return "[Vector of " + typestr + " (" + (this.fixed ? "fixed" : "variable") + ")]";
+    return "[Vector (" + typestr + ")" + (this.fixed ? " fixed" : "") + "]";
   };
 
   return array;

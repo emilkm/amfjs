@@ -44,7 +44,7 @@ test("readAmf3VectorInt", function (t) {
   var data = fs.readFileSync("asset/value/vector-int.bin3");
   var reader = new amf.Reader(data);
   var obj = reader.readObject();
-  t.equal("[Vector of int (variable)]", obj.value.toString());
+  t.equal("[Vector (int)]", obj.value.toString());
   t.equal(amf.const.AMF3_VECTOR_INT, obj.value.type);
   t.equal(false, obj.value.fixed);
   t.equal(3, obj.value.length);
@@ -59,7 +59,7 @@ test("readAmf3VectorIntNegative", function (t) {
   var data = fs.readFileSync("asset/value/vector-int-negative.bin3");
   var reader = new amf.Reader(data);
   var obj = reader.readObject();
-  t.equal("[Vector of int (variable)]", obj.value.toString());
+  t.equal("[Vector (int)]", obj.value.toString());
   t.equal(amf.const.AMF3_VECTOR_INT, obj.value.type);
   t.equal(false, obj.value.fixed);
   t.equal(3, obj.value.length);
@@ -74,7 +74,7 @@ test("readAmf3VectorIntNegative", function (t) {
   var data = fs.readFileSync("asset/value/vector-uint.bin3");
   var reader = new amf.Reader(data);
   var obj = reader.readObject();
-  t.equal("[Vector of int (variable)]", obj.value.toString());
+  t.equal("[Vector of int]", obj.value.toString());
   t.equal(amf.const.AMF3_VECTOR_UINT, obj.value.type);
   t.equal(false, obj.value.fixed);
   t.equal(3, obj.value.length);
@@ -89,12 +89,27 @@ test("readAmf3VectorDouble", function (t) {
   var data = fs.readFileSync("asset/value/vector-double.bin3");
   var reader = new amf.Reader(data);
   var obj = reader.readObject();
-  t.equal("[Vector of double (variable)]", obj.value.toString());
+  t.equal("[Vector (double)]", obj.value.toString());
   t.equal(amf.const.AMF3_VECTOR_DOUBLE, obj.value.type);
   t.equal(false, obj.value.fixed);
   t.equal(3, obj.value.length);
   t.equal(-31.57, obj.value[0]);
   t.equal(0, obj.value[1]);
   t.equal(31.57, obj.value[2]);
+  t.end();
+});
+
+test("readAmf3VectorObject", function (t) {
+  var exp = {value: amf.toVector(amf.const.AMF3_VECTOR_OBJECT, [{value: 1}, {value: 2}, {value: 3}])};
+  var data = fs.readFileSync("asset/value/vector-object.bin3");
+  var reader = new amf.Reader(data);
+  var obj = reader.readObject();
+  t.equal("[Vector (object)]", obj.value.toString());
+  t.equal(amf.const.AMF3_VECTOR_OBJECT, obj.value.type);
+  t.equal(false, obj.value.fixed);
+  t.equal(3, obj.value.length);
+  t.equal(1, obj.value[0].value);
+  t.equal(2, obj.value[1].value);
+  t.equal(3, obj.value[2].value);
   t.end();
 });
