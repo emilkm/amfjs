@@ -40,7 +40,7 @@ test("readAmf3StringUnicode", function (t) {
 });
 
 test("readAmf3VectorInt", function (t) {
-  var exp = {value: amf.toVector([1, 2, 3], amf.const.AMF3_VECTOR_INT)};
+  var exp = {value: amf.toVector(amf.const.AMF3_VECTOR_INT, [1, 2, 3])};
   var data = fs.readFileSync("asset/value/vector-int.bin3");
   var reader = new amf.Reader(data);
   var obj = reader.readObject();
@@ -55,7 +55,7 @@ test("readAmf3VectorInt", function (t) {
 });
 
 test("readAmf3VectorIntNegative", function (t) {
-  var exp = {value: amf.toVector([-3, -2, -1], amf.const.AMF3_VECTOR_INT)};
+  var exp = {value: amf.toVector(amf.const.AMF3_VECTOR_INT, [-3, -2, -1])};
   var data = fs.readFileSync("asset/value/vector-int-negative.bin3");
   var reader = new amf.Reader(data);
   var obj = reader.readObject();
@@ -69,13 +69,32 @@ test("readAmf3VectorIntNegative", function (t) {
   t.end();
 });
 
-/*test("readAmf3VectorUint", function (t) {
-  $exp = array(2147483647, 2147483648, 4294967295);
-  $data = unserialize(file_get_contents(__DIR__ . '/../../asset/value/vector-uint.amf3'));
-  $this->in->setData($data);
-  $obj = $this->in->readObject();
-  $this->assertInstanceOf('emilkm\efxphp\Amf\Types\Vector', $obj->value);
-  $this->assertEquals(Constants::AMF3_VECTOR_UINT, $obj->value->type);
-  $this->assertEquals(false, $obj->value->fixed);
-  $this->assertEquals($exp, $obj->value->data);
-}*/
+/*test("readAmf3VectorUInt", function (t) {
+  var exp = {value: amf.toVector(amf.const.AMF3_VECTOR_UINT, [2147483647, 2147483648, 4294967295])};
+  var data = fs.readFileSync("asset/value/vector-uint.bin3");
+  var reader = new amf.Reader(data);
+  var obj = reader.readObject();
+  t.equal("[Vector of int (variable)]", obj.value.toString());
+  t.equal(amf.const.AMF3_VECTOR_UINT, obj.value.type);
+  t.equal(false, obj.value.fixed);
+  t.equal(3, obj.value.length);
+  t.equal(2147483647, obj.value[0]);
+  t.equal(2147483648, obj.value[1]);
+  t.equal(4294967295, obj.value[2]);
+  t.end();
+});*/
+
+test("readAmf3VectorDouble", function (t) {
+  var exp = {value: amf.toVector(amf.const.AMF3_VECTOR_DOUBLE, [-31.57, 0, 31.57])};
+  var data = fs.readFileSync("asset/value/vector-double.bin3");
+  var reader = new amf.Reader(data);
+  var obj = reader.readObject();
+  t.equal("[Vector of double (variable)]", obj.value.toString());
+  t.equal(amf.const.AMF3_VECTOR_DOUBLE, obj.value.type);
+  t.equal(false, obj.value.fixed);
+  t.equal(3, obj.value.length);
+  t.equal(-31.57, obj.value[0]);
+  t.equal(0, obj.value[1]);
+  t.equal(31.57, obj.value[2]);
+  t.end();
+});

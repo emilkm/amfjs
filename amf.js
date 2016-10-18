@@ -36,9 +36,9 @@ amf = {
     AMF0_XMLDOCUMENT          : 15,
     AMF0_TYPEDOBJECT          : 16,
     AMF0_AMF3                 : 17,
-    
+
     AMF3_OBJECT_ENCODING      : 3,
-    
+
     AMF3_UNDEFINED            : 0,
     AMF3_NULL                 : 1,
     AMF3_BOOLEAN_FALSE        : 2,
@@ -59,7 +59,7 @@ amf = {
     AMF3_DICTIONARY           : 17,
 
     UNKNOWN_CONTENT_LENGTH    : 1,
-    
+
     UINT29_MASK               : 536870911,
     INT28_MAX_VALUE           : 268435455,
     INT28_MIN_VALUE           : -268435456,
@@ -69,10 +69,10 @@ amf = {
     MAX_STORED_OBJECTS        : 1024
   },
 
-  bind: function(functor, object) { 
+  bind: function(functor, object) {
     return function() {
-      return functor.apply(object, arguments); 
-    };  
+      return functor.apply(object, arguments);
+    };
   },
 
   registerClass: function(name, clazz) {
@@ -647,7 +647,7 @@ amf.Writer.prototype.writeObject = function(v) {
   } else {
     if (v.constructor === Array) {
       if (v.toString().indexOf("[Vector") == 0) {
-        this.wiriteVector(v);
+        this.writeVector(v);
       } else {
         this.writeArray(v);
       }
@@ -696,19 +696,19 @@ amf.Writer.prototype.writeTraits = function(v) {
 
 /* Write map as array
 amf.Writer.prototype.writeMap = function(v) {
-   this.write(amf.const.AMF3_ARRAY);
-   if (!this.objectByReference(map)) {
-     this.writeUInt29((0 << 1) | 1);
-     for (var key in v) {
-       if (key) {
-         this.writeStringWithoutType(key);
-       } else {
-         this.writeStringWithoutType(amf.const.EMPTY_STRING);
-       }
-       this.writeObject(v[key]);
-     }
-     this.writeStringWithoutType(amf.const.EMPTY_STRING);
-   }
+  this.write(amf.const.AMF3_ARRAY);
+  if (!this.objectByReference(map)) {
+    this.writeUInt29((0 << 1) | 1);
+    for (var key in v) {
+      if (key) {
+        this.writeStringWithoutType(key);
+      } else {
+        this.writeStringWithoutType(amf.const.EMPTY_STRING);
+      }
+      this.writeObject(v[key]);
+    }
+    this.writeStringWithoutType(amf.const.EMPTY_STRING);
+  }
 };*/
 
 amf.Writer.prototype.writeMap = function(v) {
@@ -731,11 +731,12 @@ amf.Writer.prototype.writeMap = function(v) {
 
 amf.Writer.prototype.writeArray = function(v) {
   this.write(amf.const.AMF3_ARRAY);
+  var len = v.length;
   if (!this.objectByReference(v)) {
-    this.writeUInt29((v.length << 1) | 1);
+    this.writeUInt29((len << 1) | 1);
     this.writeUInt29(1); //empty string implying no named keys
-    if (v.length > 0) {
-      for (var i = 0; i < v.length; i++) {
+    if (len > 0) {
+      for (var i = 0; i < len; i++) {
         this.writeObject(v[i]);
       }
     }
@@ -743,7 +744,35 @@ amf.Writer.prototype.writeArray = function(v) {
 };
 
 amf.Writer.prototype.writeVector = function(v) {
-
+  this.write(v.type);
+  var i, len = v.length;
+  if (!this.objectByReference(v)) {
+    this.writeUInt29((len << 1) | 1);
+    this.writeBoolean(v.fixed);
+  }
+  if (v.type == amf.const.AMF3_VECTOR_OBJECT) {
+    var className = "";
+    if (len > 0) {
+      // TODO: how much of the PHP logic can we do here
+      // className = v[0].constructor.name;   // == "Foo" Foo.name
+    }
+    this.writeStringWithoutType(className);
+    for (i = 0; i < len; i++) {
+      this.writeCustomObject(v[i]);
+    }
+  } else if (v.type == amf.const.AMF3_VECTOR_INT) {
+    for (i = 0; i < len; i++) {
+      this.writeInt(v[i]);
+    }
+  } else if (v.type == amf.const.AMF3_VECTOR_UINT) {
+    for (i = 0; i < len; i++) {
+      //TODO: implement or not
+    }
+  } else if (v.type == amf.const.AMF3_VECTOR_DOUBLE) {
+    for (i = 0; i < len; i++) {
+      this.writeDouble(v[i]);
+    }
+  }
 };
 
 amf.Reader = function(data) {
@@ -1061,7 +1090,7 @@ amf.Reader.prototype.readAmf3Vector = function(type) {
     return this.getObject(ref >> 1);
   }
   var len = (ref >> 1);
-  var vector = amf.toVector([], type, this.readBoolean());
+  var vector = amf.toVector(type, [], this.readBoolean());
   var i;
   if (type === amf.const.AMF3_VECTOR_OBJECT) {
     this.readString(); //className
@@ -1074,7 +1103,7 @@ amf.Reader.prototype.readAmf3Vector = function(type) {
     }
   } else if (type === amf.const.AMF3_VECTOR_UINT) {
     for (i = 0; i < len; i++) {
-      vector.push(this.readInt());
+      //TODO: implement or not
     }
   } else if (type === amf.const.AMF3_VECTOR_DOUBLE) {
     for (i = 0; i < len; i++) {
@@ -1251,7 +1280,7 @@ amf.uuid = function c(a,b){
 };
 
 
-amf.toVector = function(array, type, fixed) {
+amf.toVector = function(type, array, fixed) {
   array = array||[];
   array.type = type||amf.const.AMF3_VECTOR_OBJECT;
   array.fixed = fixed||false;
@@ -1281,37 +1310,37 @@ amf.toVector = function(array, type, fixed) {
 
 /**
 
-Bazed on Promiz - A fast Promises/A+ library 
-https://github.com/Zolmeister/promiz
+ Bazed on Promiz - A fast Promises/A+ library
+ https://github.com/Zolmeister/promiz
 
-The MIT License (MIT)
+ The MIT License (MIT)
 
-Copyright (c) 2014 Zolmeister
+ Copyright (c) 2014 Zolmeister
 
-Permission is hereby granted, free of charge, to any person obtaining a copy of
-this software and associated documentation files (the "Software"), to deal in
-the Software without restriction, including without limitation the rights to
-use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
-the Software, and to permit persons to whom the Software is furnished to do so,
-subject to the following conditions:
+ Permission is hereby granted, free of charge, to any person obtaining a copy of
+ this software and associated documentation files (the "Software"), to deal in
+ the Software without restriction, including without limitation the rights to
+ use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
+ the Software, and to permit persons to whom the Software is furnished to do so,
+ subject to the following conditions:
 
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
+ The above copyright notice and this permission notice shall be included in all
+ copies or substantial portions of the Software.
 
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
-FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
-COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
-IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
-CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
+ FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
+ COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
+ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-*/
+ */
 
 (function (self) {
   var now = typeof setImmediate !== 'undefined' ? setImmediate : function(cb) {
     setTimeout(cb, 0)
   }
-  
+
   /**
    * @constructor
    */
@@ -1428,7 +1457,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
       self.fire()
     }, function (v) {
       self.val = v
-      
+
       if (self.state === 'resolving' && typeof self.fn === 'function') {
         try {
           self.val = self.fn.call(undefined, self.val)
@@ -1476,26 +1505,26 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
   promise.prototype.nodeify = function (cb) {
     if (typeof cb === 'function') return this.then(function (val) {
-        try {
-          cb(null, val)
-        } catch (e) {
-          setImmediate(function () {
-            throw e
-          })
-        }
+      try {
+        cb(null, val)
+      } catch (e) {
+        setImmediate(function () {
+          throw e
+        })
+      }
 
-        return val
-      }, function (val) {
-        try {
-          cb(val)
-        } catch (e) {
-          setImmediate(function () {
-            throw e
-          })
-        }
+      return val
+    }, function (val) {
+      try {
+        cb(val)
+      } catch (e) {
+        setImmediate(function () {
+          throw e
+        })
+      }
 
-        return val
-      })
+      return val
+    })
 
     return this
   }
@@ -1505,7 +1534,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
       return typeof fn === 'function' && fn.apply(null, list)
     }, er)
   }
-  
+
   promise.prototype.all = function() {
     var self = this
     return this.then(function(list){
@@ -1514,25 +1543,25 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
         p.reject(TypeError)
         return p
       }
-      
+
       var cnt = 0
       var target = list.length
-      
+
       function done() {
         if (++cnt === target) p.resolve(list)
       }
-      
+
       for(var i=0, l=list.length; i<l; i++) {
         var value = list[i]
         var ref;
-        
+
         try {
           ref = value && value.then
         } catch (e) {
           p.reject(e)
           break
         }
-        
+
         (function(i){
           self.thennable(ref, function(val){
             list[i] = val
@@ -1600,6 +1629,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
       return def
     }
   }
-  
+
   self.promise = promiz
 })(amf);
