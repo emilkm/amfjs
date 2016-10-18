@@ -6,28 +6,67 @@ amf = {
   clients: {},
   classes: {},
 
-  CONST: {
-    EMPTY_STRING: "",
-    NULL_STRING: "null",
-    UNDEFINED_TYPE: 0,
-    NULL_TYPE: 1,
-    FALSE_TYPE: 2,
-    TRUE_TYPE: 3,
-    INTEGER_TYPE: 4,
-    DOUBLE_TYPE: 5,
-    STRING_TYPE: 6,
-    XML_TYPE: 7,
-    DATE_TYPE: 8,
-    ARRAY_TYPE: 9,
-    OBJECT_TYPE: 10,
-    XMLSTRING_TYPE: 11,
-    BYTEARRAY_TYPE: 12,
-    AMF0_AMF3: 17,
-    UINT29_MASK: 536870911,
-    INT28_MAX_VALUE: 268435455,
-    INT28_MIN_VALUE: -268435456,
-    CLASS_ALIAS: "_explicitType",
-    EXTERNALIZED_FIELD: "_externalizedData"
+  const: {
+    CLASS_ALIAS               : "_explicitType",
+    EXTERNALIZED_FIELD        : "_externalizedData",
+
+    RESULT_METHOD             : "/onResult",
+    STATUS_METHOD             : "/onStatus",
+
+    EMPTY_STRING              : "",
+    NULL_STRING               : "null",
+
+    AMF0_OBJECT_ENCODING      : 0,
+
+    AMF0_NUMBER               : 0,
+    AMF0_BOOLEAN              : 1,
+    AMF0_STRING               : 2,
+    AMF0_OBJECT               : 3,
+    AMF0_MOVIECLIP            : 4,
+    AMF0_NULL                 : 5,
+    AMF0_UNDEFINED            : 6,
+    AMF0_REFERENCE            : 7,
+    AMF0_MIXEDARRAY           : 8, //ECMAArray
+    AMF0_OBJECTEND            : 9,
+    AMF0_ARRAY                : 10, //StrictArray
+    AMF0_DATE                 : 11,
+    AMF0_LONGSTRING           : 12,
+    AMF0_UNSUPPORTED          : 13,
+    AMF0_RECORDSET            : 14,
+    AMF0_XMLDOCUMENT          : 15,
+    AMF0_TYPEDOBJECT          : 16,
+    AMF0_AMF3                 : 17,
+    
+    AMF3_OBJECT_ENCODING      : 3,
+    
+    AMF3_UNDEFINED            : 0,
+    AMF3_NULL                 : 1,
+    AMF3_BOOLEAN_FALSE        : 2,
+    AMF3_BOOLEAN_TRUE         : 3,
+    AMF3_INTEGER              : 4,
+    AMF3_DOUBLE               : 5,
+    AMF3_STRING               : 6,
+    AMF3_XMLDOCUMENT          : 7,
+    AMF3_DATE                 : 8,
+    AMF3_ARRAY                : 9,
+    AMF3_OBJECT               : 10,
+    AMF3_XML                  : 11,
+    AMF3_BYTEARRAY            : 12,
+    AMF3_VECTOR_INT           : 13,
+    AMF3_VECTOR_UINT          : 14,
+    AMF3_VECTOR_DOUBLE        : 15,
+    AMF3_VECTOR_OBJECT        : 16,
+    AMF3_DICTIONARY           : 17,
+
+    UNKNOWN_CONTENT_LENGTH    : 1,
+    
+    UINT29_MASK               : 536870911,
+    INT28_MAX_VALUE           : 268435455,
+    INT28_MIN_VALUE           : -268435456,
+    UINT_MAX_VALUE            : 4294967295,
+    UINT_MIN_VALUE            : 0,
+
+    MAX_STORED_OBJECTS        : 1024
   },
 
   bind: function(functor, object) { 
@@ -111,7 +150,6 @@ amf = {
 };
 
 amf.Client = function(destination, endpoint, timeout) {
-
   this.xhrPoolSize = 6;
   this.xhrPool = [];
   this.dnf = new Function;
@@ -567,18 +605,18 @@ amf.Writer.prototype.traitsByReference = function(v, alias) {
 };
 
 amf.Writer.prototype.writeAmfInt = function(v) {
-  if (v >= amf.CONST.INT28_MIN_VALUE && v <= amf.CONST.INT28_MAX_VALUE) {
-    v = v & amf.CONST.UINT29_MASK;
-    this.write(amf.CONST.INTEGER_TYPE);
+  if (v >= amf.const.INT28_MIN_VALUE && v <= amf.const.INT28_MAX_VALUE) {
+    v = v & amf.const.UINT29_MASK;
+    this.write(amf.const.AMF3_INTEGER);
     this.writeUInt29(v);
   } else {
-    this.write(amf.CONST.DOUBLE_TYPE);
+    this.write(amf.const.AMF3_DOUBLE);
     this.writeDouble(v);
   }
 };
 
 amf.Writer.prototype.writeDate = function(v) {
-  this.write(amf.CONST.DATE_TYPE);
+  this.write(amf.const.AMF3_DATE);
   if (!this.objectByReference(v)) {
     this.writeUInt29(1);
     this.writeDouble(v.getTime());
@@ -587,29 +625,33 @@ amf.Writer.prototype.writeDate = function(v) {
 
 amf.Writer.prototype.writeObject = function(v) {
   if (v == null) {
-    this.write(amf.CONST.NULL_TYPE);
+    this.write(amf.const.AMF3_NULL);
     return;
   }
   if (v.constructor === String) {
-    this.write(amf.CONST.STRING_TYPE);
+    this.write(amf.const.AMF3_STRING);
     this.writeStringWithoutType(v);
   } else if (v.constructor === Number) {
     if (v === +v && v === (v | 0)) {
       this.writeAmfInt(v);
     } else {
-      this.write(amf.CONST.DOUBLE_TYPE);
+      this.write(amf.const.AMF3_DOUBLE);
       this.writeDouble(v);
     }
   } else if (v.constructor === Boolean) {
     this.write((v
-      ? amf.CONST.TRUE_TYPE
-      : amf.CONST.FALSE_TYPE));
+      ? amf.const.AMF3_BOOLEAN_TRUE
+      : amf.const.AMF3_BOOLEAN_FALSE));
   } else if (v.constructor === Date) {
     this.writeDate(v);
   } else {
     if (v.constructor === Array) {
-      this.writeArray(v);
-    } else if (amf.CONST.CLASS_ALIAS in v) {
+      if (v.toString().indexOf("[Vector") == 0) {
+        this.wiriteVector(v);
+      } else {
+        this.writeArray(v);
+      }
+    } else if (amf.const.CLASS_ALIAS in v) {
       this.writeCustomObject(v);
     } else {
       this.writeMap(v);
@@ -618,7 +660,7 @@ amf.Writer.prototype.writeObject = function(v) {
 };
 
 amf.Writer.prototype.writeCustomObject = function(v) {
-  this.write(amf.CONST.OBJECT_TYPE);
+  this.write(amf.const.AMF3_OBJECT);
   if (!this.objectByReference(v)) {
     var traits = this.writeTraits(v);
     for (var i = 0; i < traits.length; i++) {
@@ -635,14 +677,14 @@ amf.Writer.prototype.writeTraits = function(v) {
   var dynamic = false;
 
   for (var t in v) {
-    if (t != amf.CONST.CLASS_ALIAS) {
+    if (t != amf.const.CLASS_ALIAS) {
       traits.push(t);
       count++;
     }
   }
-  if (!this.traitsByReference(traits, v[amf.CONST.CLASS_ALIAS])) {
+  if (!this.traitsByReference(traits, v[amf.const.CLASS_ALIAS])) {
     this.writeUInt29(3 | (externalizable ? 4 : 0) | (dynamic ? 8 : 0) | (count << 4));
-    this.writeStringWithoutType(v[amf.CONST.CLASS_ALIAS]);
+    this.writeStringWithoutType(v[amf.const.CLASS_ALIAS]);
     if (count > 0) {
       for (var prop in traits) {
         this.writeStringWithoutType(traits[prop]);
@@ -653,42 +695,42 @@ amf.Writer.prototype.writeTraits = function(v) {
 };
 
 /* Write map as array
- amf.Writer.prototype.writeMap = function(v) {
- this.write(amf.CONST.ARRAY_TYPE);
- if (!this.objectByReference(map)) {
- this.writeUInt29((0 << 1) | 1);
- for (var key in v) {
- if (key) {
- this.writeStringWithoutType(key);
- } else {
- this.writeStringWithoutType(amf.CONST.EMPTY_STRING);
- }
- this.writeObject(v[key]);
- }
- this.writeStringWithoutType(amf.CONST.EMPTY_STRING);
- }
- };*/
+amf.Writer.prototype.writeMap = function(v) {
+   this.write(amf.const.AMF3_ARRAY);
+   if (!this.objectByReference(map)) {
+     this.writeUInt29((0 << 1) | 1);
+     for (var key in v) {
+       if (key) {
+         this.writeStringWithoutType(key);
+       } else {
+         this.writeStringWithoutType(amf.const.EMPTY_STRING);
+       }
+       this.writeObject(v[key]);
+     }
+     this.writeStringWithoutType(amf.const.EMPTY_STRING);
+   }
+};*/
 
 amf.Writer.prototype.writeMap = function(v) {
-  this.write(amf.CONST.OBJECT_TYPE);
+  this.write(amf.const.AMF3_OBJECT);
   if (!this.objectByReference(v)) {
     this.writeUInt29(11);
     this.traitCount++; //bogus traits entry here
-    this.writeStringWithoutType(amf.CONST.EMPTY_STRING); //class name
+    this.writeStringWithoutType(amf.const.EMPTY_STRING); //class name
     for (var key in v) {
       if (key) {
         this.writeStringWithoutType(key);
       } else {
-        this.writeStringWithoutType(amf.CONST.EMPTY_STRING);
+        this.writeStringWithoutType(amf.const.EMPTY_STRING);
       }
       this.writeObject(v[key]);
     }
-    this.writeStringWithoutType(amf.CONST.EMPTY_STRING); //empty string end of dynamic members
+    this.writeStringWithoutType(amf.const.EMPTY_STRING); //empty string end of dynamic members
   }
 };
 
 amf.Writer.prototype.writeArray = function(v) {
-  this.write(amf.CONST.ARRAY_TYPE);
+  this.write(amf.const.AMF3_ARRAY);
   if (!this.objectByReference(v)) {
     this.writeUInt29((v.length << 1) | 1);
     this.writeUInt29(1); //empty string implying no named keys
@@ -700,6 +742,10 @@ amf.Writer.prototype.writeArray = function(v) {
   }
 };
 
+amf.Writer.prototype.writeVector = function(v) {
+
+};
+
 amf.Reader = function(data) {
   this.objects = [];
   this.traits = [];
@@ -709,16 +755,31 @@ amf.Reader = function(data) {
 };
 
 amf.Reader.prototype.read = function() {
+  //if (this.pos + 1 > this.datalen) { //this.data.length store in this.datalen
+  //  throw "Cannot read past the end of the data.";
+  //}
   return this.data[this.pos++];
+};
+
+amf.Reader.prototype.readUIntN = function(n) {
+  var value = this.read();
+  for (var i = 1; i < n; i++) {
+    value = (value << 8) | this.read();
+  }
+  return value;
 };
 
 amf.Reader.prototype.readUnsignedShort = function() {
   var c1 = this.read(), c2 = this.read();
-  return (c1 << 8) + (c2 << 0);
+  return ((c1 << 8) + (c2 << 0));
+};
+
+amf.Reader.prototype.readInt = function() {
+  var c1 = this.read(), c2 = this.read(), c3 = this.read(), c4 = this.read();
+  return ((c1 << 24) + (c2 << 16) + (c3 << 8) + (c4 << 0));
 };
 
 amf.Reader.prototype.readUInt29 = function() {
-  // Each byte must be treated as unsigned
   var b = this.read() & 255;
   if (b < 128) {
     return b;
@@ -746,7 +807,7 @@ amf.Reader.prototype.readFully = function(buff, start, length) {
 
 amf.Reader.prototype.readUTF = function(length) {
   var utflen = length ? length : this.readUnsignedShort();
-  var len = this.pos + utflen
+  var len = this.pos + utflen;
   var chararr = [];
   var c1 = 0;
   var seqlen = 0;
@@ -803,7 +864,7 @@ amf.Reader.prototype.readString = function() {
   } else {
     var len = (ref >> 1);
     if (len == 0) {
-      return amf.CONST.EMPTY_STRING;
+      return amf.const.EMPTY_STRING;
     }
     var str = this.readUTF(len);
     this.rememberString(str);
@@ -846,7 +907,7 @@ amf.Reader.prototype.readTraits = function(ref) {
     };
     var className = this.readString();
     if (className != null && className != "") {
-      ti[amf.CONST.CLASS_ALIAS] = className;
+      ti[amf.const.CLASS_ALIAS] = className;
     }
     ti.props = [];
     for (var i = 0; i < ti.count; i++) {
@@ -864,24 +925,24 @@ amf.Reader.prototype.readScriptObject = function() {
   } else {
     var traits = this.readTraits(ref);
     var obj;
-    if (amf.CONST.CLASS_ALIAS in traits) {
-      if (amf.classes[traits[amf.CONST.CLASS_ALIAS]]) {
-        obj = new amf.classes[traits[amf.CONST.CLASS_ALIAS]];
+    if (amf.const.CLASS_ALIAS in traits) {
+      if (amf.classes[traits[amf.const.CLASS_ALIAS]]) {
+        obj = new amf.classes[traits[amf.const.CLASS_ALIAS]];
       } else {
         obj = {};
-        obj[amf.CONST.CLASS_ALIAS] = traits[amf.CONST.CLASS_ALIAS];
+        obj[amf.const.CLASS_ALIAS] = traits[amf.const.CLASS_ALIAS];
       }
     } else {
       obj = {};
     }
     this.rememberObject(obj);
     if (traits.externalizable) {
-      if (obj[amf.CONST.CLASS_ALIAS] == "flex.messaging.io.ArrayCollection"
-        || obj[amf.CONST.CLASS_ALIAS] == "flex.messaging.io.ObjectProxy"
+      if (obj[amf.const.CLASS_ALIAS] == "flex.messaging.io.ArrayCollection"
+        || obj[amf.const.CLASS_ALIAS] == "flex.messaging.io.ObjectProxy"
       ) {
         return this.readObject();
       } else {
-        obj[amf.CONST.EXTERNALIZED_FIELD] = this.readObject();
+        obj[amf.const.EXTERNALIZED_FIELD] = this.readObject();
       }
     } else {
       for (var i in traits.props) {
@@ -994,53 +1055,89 @@ amf.Reader.prototype.readByteArray = function() {
   }
 };
 
+amf.Reader.prototype.readAmf3Vector = function(type) {
+  var ref = this.readUInt29();
+  if ((ref & 1) == 0) {
+    return this.getObject(ref >> 1);
+  }
+  var len = (ref >> 1);
+  var vector = amf.toVector([], type, this.readBoolean());
+  var i;
+  if (type === amf.const.AMF3_VECTOR_OBJECT) {
+    this.readString(); //className
+    for (i = 0; i < len; i++) {
+      vector.push(this.readObject());
+    }
+  } else if (type === amf.const.AMF3_VECTOR_INT) {
+    for (i = 0; i < len; i++) {
+      vector.push(this.readInt());
+    }
+  } else if (type === amf.const.AMF3_VECTOR_UINT) {
+    for (i = 0; i < len; i++) {
+      vector.push(this.readInt());
+    }
+  } else if (type === amf.const.AMF3_VECTOR_DOUBLE) {
+    for (i = 0; i < len; i++) {
+      vector.push(this.readDouble());
+    }
+  }
+  this.rememberObject(vector);
+  return vector;
+};
+
 amf.Reader.prototype.readObjectValue = function(type) {
   var value = null;
 
   switch (type) {
-    case amf.CONST.STRING_TYPE:
+    case amf.const.AMF3_STRING:
       value = this.readString();
       break;
-    case amf.CONST.OBJECT_TYPE:
+    case amf.const.AMF3_OBJECT:
       try {
         value = this.readScriptObject();
       } catch (e) {
         throw "Failed to deserialize: " + e;
       }
       break;
-    case amf.CONST.ARRAY_TYPE:
+    case amf.const.AMF3_ARRAY:
       value = this.readArray();
       //value = this.readMap();
       break;
-    case amf.CONST.FALSE_TYPE:
+    case amf.const.AMF3_BOOLEAN_FALSE:
       value = false;
       break;
-    case amf.CONST.TRUE_TYPE:
+    case amf.const.AMF3_BOOLEAN_TRUE:
       value = true;
       break;
-    case amf.CONST.INTEGER_TYPE:
+    case amf.const.AMF3_INTEGER:
       value = this.readUInt29();
       // Symmetric with writing an integer to fix sign bits for
       // negative values...
       value = (value << 3) >> 3;
       break;
-    case amf.CONST.DOUBLE_TYPE:
+    case amf.const.AMF3_DOUBLE:
       value = this.readDouble();
       break;
-    case amf.CONST.UNDEFINED_TYPE:
-    case amf.CONST.NULL_TYPE:
+    case amf.const.AMF3_UNDEFINED:
+    case amf.const.AMF3_NULL:
       break;
-    case amf.CONST.DATE_TYPE:
+    case amf.const.AMF3_DATE:
       value = this.readDate();
       break;
-    case amf.CONST.BYTEARRAY_TYPE:
+    case amf.const.AMF3_BYTEARRAY:
       value = this.readByteArray();
       break;
-    case amf.CONST.AMF0_AMF3:
+    case amf.const.AMF3_VECTOR_INT:
+    case amf.const.AMF3_VECTOR_UINT:
+    case amf.const.AMF3_VECTOR_DOUBLE:
+    case amf.const.AMF3_VECTOR_OBJECT:
+      value = this.readAmf3Vector(type);
+      break;
+    case amf.const.AMF0_AMF3:
       value = this.readObject();
       break;
     default:
-      throw "Unknown AMF type: " + type;
+      throw "Unsupported AMF type: " + type;
   }
   return value;
 };
@@ -1078,27 +1175,27 @@ amf.Serializer.prototype.writeObject = function(object) {
 amf.Serializer.prototype.writeHeader = function(header) {
   this.writer.writeUTF(header.name);
   this.writer.writeBoolean(header.mustUnderstand);
-  this.writer.writeInt(1); //UNKNOWN_CONTENT_LENGTH used to be -1
+  this.writer.writeInt(amf.const.UNKNOWN_CONTENT_LENGTH);
   this.writer.reset();
   //this.writer.writeObject(header.data);
-  this.writer.write(1); //boolean amf0 marker
+  this.writer.write(amf.const.AMF0_BOOLEAN);
   this.writer.writeBoolean(true);
 };
 
 amf.Serializer.prototype.writeBody = function(body) {
   if (body.targetURI == null) {
-    this.writer.writeUTF(amf.CONST.NULL_STRING);
+    this.writer.writeUTF(amf.const.NULL_STRING);
   } else {
     this.writer.writeUTF(body.targetURI);
   }
   if (body.responseURI == null) {
-    this.writer.writeUTF(amf.CONST.NULL_STRING);
+    this.writer.writeUTF(amf.const.NULL_STRING);
   } else {
     this.writer.writeUTF(body.responseURI);
   }
-  this.writer.writeInt(1); //UNKNOWN_CONTENT_LENGTH used to be -1
+  this.writer.writeInt(amf.const.UNKNOWN_CONTENT_LENGTH);
   this.writer.reset();
-  this.writer.write(amf.CONST.AMF0_AMF3); //AMF0_AMF3
+  this.writer.write(amf.const.AMF0_AMF3);
   this.writeObject(body.data);
 };
 
@@ -1153,6 +1250,33 @@ amf.uuid = function c(a,b){
   return a?(b|Math.random()*16>>b/4).toString(16):([1e7]+-1e3+-4e3+-8e3+-1e11).replace(/1|0|(8)/g,c);
 };
 
+
+amf.toVector = function(array, type, fixed) {
+  array = array||[];
+  array.type = type||amf.const.AMF3_VECTOR_OBJECT;
+  array.fixed = fixed||false;
+
+  array.toString = function() {
+    var typestr = "object";
+    switch (this.type) {
+      case amf.const.AMF3_VECTOR_INT:
+        typestr = "int";
+        break;
+      case amf.const.AMF3_VECTOR_UINT:
+        typestr = "uint";
+        break;
+      case amf.const.AMF3_VECTOR_DOUBLE:
+        typestr = "double";
+        break;
+      case amf.const.AMF3_VECTOR_OBJECT:
+        typestr = "object";
+        break;
+    }
+    return "[Vector of " + typestr + " (" + (this.fixed ? "fixed" : "variable") + ")]";
+  };
+
+  return array;
+};
 
 
 /**
