@@ -69,12 +69,12 @@ test("readAmf3VectorIntNegative", function (t) {
   t.end();
 });
 
-/*test("readAmf3VectorUInt", function (t) {
+test("readAmf3VectorUInt", function (t) {
   var exp = {value: amf.toVector(amf.const.AMF3_VECTOR_UINT, [2147483647, 2147483648, 4294967295])};
   var data = fs.readFileSync("asset/value/vector-uint.bin3");
   var reader = new amf.Reader(data);
   var obj = reader.readObject();
-  t.equal("[Vector of int]", obj.value.toString());
+  t.equal("[Vector (uint)]", obj.value.toString());
   t.equal(amf.const.AMF3_VECTOR_UINT, obj.value.type);
   t.equal(false, obj.value.fixed);
   t.equal(3, obj.value.length);
@@ -82,7 +82,7 @@ test("readAmf3VectorIntNegative", function (t) {
   t.equal(2147483648, obj.value[1]);
   t.equal(4294967295, obj.value[2]);
   t.end();
-});*/
+});
 
 test("readAmf3VectorDouble", function (t) {
   var exp = {value: amf.toVector(amf.const.AMF3_VECTOR_DOUBLE, [-31.57, 0, 31.57])};

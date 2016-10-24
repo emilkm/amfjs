@@ -504,13 +504,13 @@ amf.Writer.prototype.writeInt = function(v) {
   this.write((v >>> 0) & 255);
 };
 
-amf.Writer.prototype.writeUnsignedInt = function(v) {
-  v < 0 && (v = -(v ^ 4294967295) - 1);
-  v &= 4294967295;
-  this.write((v >> 24) & 255);
-  this.write((v >> 16) & 255);
-  this.write((v >> 8) & 255);
-  this.write(v & 255);
+amf.Writer.prototype.writeUInt32 = function(v) {
+  v < 0 && (v = -(v ^ amf.const.UINT_MAX_VALUE) - 1);
+  v &= amf.const.UINT_MAX_VALUE;
+  this.write((v >>> 24) & 255);
+  this.write((v >>> 16) & 255);
+  this.write((v >>> 8) & 255);
+  this.write((v & 255));
 };
 
 //origin unknown
@@ -534,8 +534,8 @@ amf.Writer.prototype._getDouble = function(v) {
 
 amf.Writer.prototype.writeDouble = function(v) {
   v = this._getDouble(v);
-  this.writeUnsignedInt(v[0]);
-  this.writeUnsignedInt(v[1])
+  this.writeUInt32(v[0]);
+  this.writeUInt32(v[1])
 };
 
 amf.Writer.prototype.getResult = function() {
@@ -766,7 +766,7 @@ amf.Writer.prototype.writeVector = function(v) {
     }
   } else if (v.type == amf.const.AMF3_VECTOR_UINT) {
     for (i = 0; i < len; i++) {
-      //TODO: implement or not
+      this.writeUInt32(v[i]);
     }
   } else if (v.type == amf.const.AMF3_VECTOR_DOUBLE) {
     for (i = 0; i < len; i++) {
@@ -806,6 +806,11 @@ amf.Reader.prototype.readUnsignedShort = function() {
 amf.Reader.prototype.readInt = function() {
   var c1 = this.read(), c2 = this.read(), c3 = this.read(), c4 = this.read();
   return ((c1 << 24) + (c2 << 16) + (c3 << 8) + (c4 << 0));
+};
+
+amf.Reader.prototype.readUInt32 = function() {
+  var c1 = this.read(), c2 = this.read(), c3 = this.read(), c4 = this.read();
+  return (c1 * 0x1000000) + ((c2 << 16) | (c3 << 8) | c4);
 };
 
 amf.Reader.prototype.readUInt29 = function() {
@@ -1103,7 +1108,7 @@ amf.Reader.prototype.readAmf3Vector = function(type) {
     }
   } else if (type === amf.const.AMF3_VECTOR_UINT) {
     for (i = 0; i < len; i++) {
-      //TODO: implement or not
+      vector.push(this.readUInt32());
     }
   } else if (type === amf.const.AMF3_VECTOR_DOUBLE) {
     for (i = 0; i < len; i++) {

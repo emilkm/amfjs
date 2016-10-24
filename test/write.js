@@ -75,6 +75,22 @@ test("writeAmf3VectorIntNegative", function (t) {
   t.end();
 });
 
+test("writeAmf3VectorUint", function (t) {
+  var data = [].slice.call(fs.readFileSync("asset/value/vector-uint.bin3"));
+  var obj = {value: amf.toVector(amf.const.AMF3_VECTOR_UINT, [2147483647, 2147483648, 4294967295])};
+  var writer = new amf.Writer();
+  writer.writeObject(obj);
+  writer.data.unshift(17);
+  t.equal("[Vector (uint)]", obj.value.toString());
+  t.equal(amf.const.AMF3_VECTOR_UINT, obj.value.type);
+  t.equal(false, obj.value.fixed);
+  t.equal(3, obj.value.length);
+  t.equal(2147483647, obj.value[0]);
+  t.equal(2147483648, obj.value[1]);
+  t.equal(4294967295, obj.value[2]);
+  t.end();
+});
+
 test("writeAmf3VectorDouble", function (t) {
   var data = [].slice.call(fs.readFileSync("asset/value/vector-double.bin3"));
   var obj = {value: amf.toVector(amf.const.AMF3_VECTOR_DOUBLE, [-31.57, 0, 31.57])};
