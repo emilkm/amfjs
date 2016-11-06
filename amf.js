@@ -279,10 +279,10 @@ amf.Client.prototype._startQueue = function() {
 
 amf.Client.prototype._processQueue = function() {
   var i, xhr;
+  if ((this.sequence == 1 && this.clientId == null) || this.queueBlocked) {
+    return;
+  }
   for (i = 0; i < this.xhrPoolSize && this.requestQueue.length > 0; i++) {
-    if (this.queueBlocked) {
-      return;
-    }
     if (this.xhrPool.length == i) {
       xhr = new XMLHttpRequest();
       xhr.parent = this;
@@ -308,7 +308,7 @@ amf.Client.prototype._send = function(xhr, packet) {
     xhr.promises = packet.promises;
   } catch (e) {
     for (i in this.promises) {
-      this.promises[i].reject({code:-1001, message:"Failed encoding the request.", detail:null});
+      this.promises[i].reject({code:-1001, message:"Failed encoding the request.", detail:null, data:null});
     }
     xhr.busy = false;
     xhr.message = null;
