@@ -30,6 +30,15 @@ test("readAmf3BooleanFalse", function (t) {
   t.end();
 });
 
+test("readAmf3Double", function (t) {
+  var exp = {value: 31.57};
+  var data = fs.readFileSync("asset/value/double.bin3");
+  var reader = new amf.Reader(data);
+  var obj = reader.readObject();
+  t.deepEqual(exp, obj);
+  t.end();
+});
+
 test("readAmf3StringUnicode", function (t) {
   var exp = {value: "витоша, 富士山, 珠穆朗瑪峰, आमा"};
   var data = fs.readFileSync("asset/value/string-unicode.bin3");

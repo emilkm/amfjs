@@ -66,7 +66,11 @@ amf = {
     UINT_MAX_VALUE            : 4294967295,
     UINT_MIN_VALUE            : 0,
 
-    MAX_STORED_OBJECTS        : 1024
+    MAX_STORED_OBJECTS        : 1024,
+
+    POW_2_20                  : Math.pow(2, 20),
+    POW_2_52                  : Math.pow(2, 52),
+    POW_2_52N                 : Math.pow(2, -52)
   },
 
   bind: function(functor, object) {
@@ -513,20 +517,29 @@ amf.Writer.prototype.writeUInt32 = function(v) {
   this.write((v & 255));
 };
 
-//origin unknown
 amf.Writer.prototype._getDouble = function(v) {
   var r = [0,0];
-  if (v != v) return r[0] = -524288, r;
+  if (v != v) {
+    return r[0] = -524288, r;
+  }
   var d = v < 0 || v === 0 && 1 / v < 0 ? -2147483648 : 0, v = Math.abs(v);
-  if (v === Number.POSITIVE_INFINITY) return r[0] = d | 2146435072, r;
-  for (var e = 0; v >= 2 && e <= 1023;) e++, v /= 2;
-  for (; v < 1 && e >= -1022;) e--, v *= 2;
+  if (v === Number.POSITIVE_INFINITY) {
+    return r[0] = d | 2146435072, r;
+  }
+  for (var e = 0; v >= 2 && e <= 1023;) {
+    e++, v /= 2;
+  }
+  for (; v < 1 && e >= -1022;) {
+    e--, v *= 2;
+  }
   e += 1023;
-  if (e == 2047) return r[0] = d | 2146435072, r;
+  if (e == 2047) {
+    return r[0] = d | 2146435072, r;
+  }
   var i;
   e == 0
-    ? (i = v * Math.pow(2, 23) / 2, v = Math.round(v * Math.pow(2, 52) / 2))
-    : (i = v * Math.pow(2, 20) - Math.pow(2, 20), v = Math.round(v * Math.pow(2, 52) - Math.pow(2, 52)));
+    ? (i = v * Math.pow(2, 23) / 2, v = Math.round(v * amf.const.POW_2_52 / 2))
+    : (i = v * amf.const.POW_2_20 - amf.const.POW_2_20, v = Math.round(v * amf.const.POW_2_52 - amf.const.POW_2_52));
   r[0] = d | e << 20 & 2147418112 | i & 1048575;
   r[1] = v;
   return r;
@@ -535,7 +548,7 @@ amf.Writer.prototype._getDouble = function(v) {
 amf.Writer.prototype.writeDouble = function(v) {
   v = this._getDouble(v);
   this.writeUInt32(v[0]);
-  this.writeUInt32(v[1])
+  this.writeUInt32(v[1]);
 };
 
 amf.Writer.prototype.getResult = function() {
@@ -1029,21 +1042,37 @@ amf.Reader.prototype.readArray = function() {
   }
 };
 
-//origin unknown
 amf.Reader.prototype.readDouble = function() {
   var c1 = this.read() & 255, c2 = this.read() & 255;
   if (c1 === 255) {
-    if (c2 === 248) return Number.NaN;
-    if (c2 === 240) return Number.NEGATIVE_INFINITY
-  } else if (c1 === 127 && c2 === 240) return Number.POSITIVE_INFINITY;
-  var c3 = this.read() & 255, c4 = this.read() & 255, c5 = this.read() & 255, c6 = this.read() & 255, c7 = this.read() & 255, c8 = this.read() & 255;
-  if (!c1 && !c2 && !c3 && !c4) return 0;
-  for (var d = (c1 << 4 & 2047 | c2 >> 4) - 1023, c2 = ((c2 & 15) << 16 | c3 << 8 | c4).toString(2), c3 = c2.length; c3 < 20; c3++) c2 = "0" + c2;
-  c6 = ((c5 & 127) << 24 | c6 << 16 | c7 << 8 | c8).toString(2);
-  for (c3 = c6.length; c3 < 31; c3++) c6 = "0" + c6;
-  c5 = parseInt(c2 + (c5 >> 7 ? "1" : "0") + c6, 2);
-  if (c5 == 0 && d == -1023) return 0;
-  return (1 - (c1 >> 7 << 1)) * (1 + Math.pow(2, -52) * c5) * Math.pow(2, d);
+    if (c2 === 248) {
+      return Number.NaN;
+    }
+    if (c2 === 240) {
+      return Number.NEGATIVE_INFINITY;
+    }
+  } else if (c1 === 127 && c2 === 240) {
+    return Number.POSITIVE_INFINITY;
+  }
+  var c3 = this.read() & 255, c4 = this.read() & 255, c5 = this.read() & 255,
+    c6 = this.read() & 255, c7 = this.read() & 255, c8 = this.read() & 255;
+  if (!c1 && !c2 && !c3 && !c4) {
+    return 0;
+  }
+  var d = (c1 << 4 & 2047 | c2 >> 4) - 1023;
+  var e = ((c2 & 15) << 16 | c3 << 8 | c4).toString(2);
+  for (var i = e.length; i < 20; i++) {
+    e = "0" + e;
+  }
+  var f = ((c5 & 127) << 24 | c6 << 16 | c7 << 8 | c8).toString(2);
+  for (var j = f.length; j < 31; j++) {
+    f = "0" + f;
+  }
+  var g = parseInt(e + (c5 >> 7 ? "1" : "0") + f, 2);
+  if (g == 0 && d == -1023) {
+    return 0;
+  }
+  return (1 - (c1 >> 7 << 1)) * (1 + amf.const.POW_2_52N * g) * Math.pow(2, d);
 };
 
 amf.Reader.prototype.readDate = function() {

@@ -33,6 +33,16 @@ test("writeAmf3BooleanFalse", function (t) {
   t.end();
 });
 
+test("writeAmf3Double", function (t) {
+  var data = [].slice.call(fs.readFileSync("asset/value/double.bin3"));
+  var obj = {value: 31.57};
+  var writer = new amf.Writer();
+  writer.writeObject(obj);
+  writer.data.unshift(17);
+  t.deepEqual(data, writer.data);
+  t.end();
+});
+
 test("writeAmf3StringUnicode", function (t) {
   var data = [].slice.call(fs.readFileSync("asset/value/string-unicode.bin3"));
   var obj = {value: "витоша, 富士山, 珠穆朗瑪峰, आमा"};
