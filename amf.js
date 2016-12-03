@@ -164,6 +164,7 @@ amf.Client = function(destination, endpoint, timeout) {
   this.headers = null;
   this.requestQueue = [];
   this.queueBlocked = false;
+  this.pingFailed = false;
 
   this.destination = destination;
   this.endpoint = endpoint;
@@ -182,12 +183,19 @@ amf.Client.prototype.addHeader = function(name, value) {
   this.headers.push(header);
 };
 
+amf.Client.prototype.pingFailure = function(err) {
+  this.pingFailed = true;
+  for (var i in this.requestQueue) {
+    this.requestQueue[i].reject({code:-1000, message:"Could not connect to the server.", detail:"Could not reach AMF endpoint.", data:null});
+  }
+};
+
 amf.Client.prototype.setSessionId = function(value) {
   this.sessionId = value;
   if (this.sidPropagation == "header") {
-    this.addHeader('sID', this.sessionId);
+    this.addHeader("sID", this.sessionId);
   } else {
-    this.endpoint += '?sID=' + this.sessionId;
+    this.endpoint += "?sID=" + this.sessionId;
   }
 };
 
@@ -198,11 +206,17 @@ amf.Client.prototype.releaseQueue = function() {
 
 amf.Client.prototype.invoke = function(source, operation, params, block) {
   var promise = this._deffer(new amf.Request(source, operation, params));
+  if (this.pingFailed) {
+    promise.reject({code:-1000, message:"Could not connect to the server.", detail:"Could not reach AMF endpoint.", data:null})
+    return promise;
+  }
   if (block) {
     promise.$blocking = true;
   }
   if (this.clientId == null && this.sequence == 0 && this.requestQueue.length == 0) {
-    this.requestQueue.push(this._deffer(new amf.Request("command", "ping", null)));
+    var ping = this._deffer(new amf.Request("command", "ping", null));
+    ping.fail(amf.bind(this.pingFailure, this));
+    this.requestQueue.push(ping);
     this.requestQueue.push(promise);
     this._startQueue();
     return promise;
