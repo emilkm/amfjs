@@ -308,7 +308,7 @@ amf.Client.prototype._processQueue = function() {
     if (!xhr.busy) {
       var packet = this._createPacket();
       this._send(xhr, packet);
-      if (this.sequence == 1) {
+      if (this.sequence == 1 || this.queueBlocked) {
         return;
       }
     }
