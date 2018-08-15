@@ -53,7 +53,7 @@ p.then(
         console.log(res.data);
     },
     function(err) {
-        console.log("ping errror");
+        console.log("res.message");
     }
 );
 ```
@@ -78,6 +78,21 @@ class test
 If the AMF Client has not been assigned a _clientId_ by the server, a __flex.messaging.messages.CommandMessage__  with a _CLIENT_PING_OPERATION_ will be sent to the server first, in order to test connectivity over the current channel to the remote endpoint, and get a _clientId_ assigned.
 
 
+## TypeScript
+
+Typings cover the main usage of the library.
+
+```typescript
+let p = amfClient.invoke("test", "ping", []);
+
+p.then((res: amf.Response) => {
+    console.log(res.data);
+}).catch((res: amf.Response) => {
+    console.log(res.message);
+});
+```
+
+
 ## History
 
 Originally based on Surrey's R-AMF (AMF 99) implementation https://code.google.com/p/r-amf/
@@ -95,4 +110,3 @@ As the effort on the AMFEXT C extension for PHP swallowed enormous amounts of ti
 
 * Documentation
 * More tests
-* TypeScript?

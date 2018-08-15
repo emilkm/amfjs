@@ -149,8 +149,20 @@ amf = {
       operation: operation,
       params: params
     }
+  },
+
+  getClient: function(destination) {
+    return this.clients[destination];
   }
 
+};
+
+amf.Response = function(code, message, detail, data, scope) {
+  this.code = code;
+  this.message = message;
+  this.detail = detail;
+  this.data = data;
+  this.$scope = scope;
 };
 
 amf.Client = function(destination, endpoint, timeout) {
@@ -186,7 +198,7 @@ amf.Client.prototype.addHeader = function(name, value) {
 amf.Client.prototype.pingFailure = function(err) {
   this.pingFailed = true;
   for (var i in this.requestQueue) {
-    this.requestQueue[i].reject({code:-1000, message:"Could not connect to the server.", detail:"Could not reach AMF endpoint.", data:null});
+    this.requestQueue[i].reject(new amf.Response(-1000, "Could not connect to the server.", "Could not reach AMF endpoint."));
   }
 };
 
@@ -204,14 +216,16 @@ amf.Client.prototype.releaseQueue = function() {
   this._processQueue();
 };
 
-amf.Client.prototype.invoke = function(source, operation, params, block) {
+amf.Client.prototype.invoke = function(source, operation, params, block, nobatch) {
   var promise = this._deffer(new amf.Request(source, operation, params));
   if (this.pingFailed) {
-    promise.reject({code:-1000, message:"Could not connect to the server.", detail:"Could not reach AMF endpoint.", data:null})
+    promise.reject(new amf.Response(-1000, "Could not connect to the server.", "Could not reach AMF endpoint."));
     return promise;
   }
   if (block) {
     promise.$blocking = true;
+  } else if (nobatch) {
+    promise.$nobatch = true;
   }
   if (this.clientId == null && this.sequence == 0 && this.requestQueue.length == 0) {
     var ping = this._deffer(new amf.Request("command", "ping", null));
@@ -252,6 +266,10 @@ amf.Client.prototype._createPacket = function() {
     actionMessage.bodies.push(messageBody);
   } else {
     while (this.requestQueue.length > 0) {
+      if (!this.requestQueue[0].$blocking && this.requestQueue[0].$nobatch && actionMessage.bodies.length > 0) {
+        break;
+      }
+
       this.sequence++;
       promise = this.requestQueue.shift();
       promise.$sequence = this.sequence;
@@ -281,6 +299,8 @@ amf.Client.prototype._createPacket = function() {
       if (promise.$blocking) {
         this.queueBlocked = true;
         break;
+      } else if (promise.$nobatch) {
+        break;
       }
     }
   }
@@ -298,10 +318,16 @@ amf.Client.prototype._processQueue = function() {
   }
   for (i = 0; i < this.xhrPoolSize && this.requestQueue.length > 0; i++) {
     if (this.xhrPool.length == i) {
-      xhr = new XMLHttpRequest();
-      xhr.parent = this;
-      xhr.busy = false;
-      this.xhrPool.push(xhr);
+      xhr = {
+        obj: new XMLHttpRequest(),
+        busy: false,
+        parent: this,
+        message: null,
+        promises: null
+      };
+      if (this.xhrPoolSize > 1) {
+        this.xhrPool.push(xhr);
+      }
     } else {
       xhr = this.xhrPool[i];
     }
@@ -322,84 +348,99 @@ amf.Client.prototype._send = function(xhr, packet) {
     xhr.promises = packet.promises;
   } catch (e) {
     for (i in this.promises) {
-      this.promises[i].reject({code:-1001, message:"Failed encoding the request.", detail:null, data:null});
+      this.promises[i].reject(new amf.Response(-1001, "Failed encoding the request.", null));
     }
     xhr.busy = false;
     xhr.message = null;
     xhr.promises = null;
-    xhr.parent._processQueue();
+    this._processQueue();
     return;
   }
-  xhr.onreadystatechange = function() {
-    if (this.readyState === 1) {
-      if (!this.busy) {
-        this.busy = true;
-        this.setRequestHeader("Content-Type", "application/x-amf; charset=UTF-8");
-        this.responseType = "arraybuffer";
-        xhr.send(new Uint8Array(xhr.message));
-      }
-    } else if (this.readyState === 4) {
-      this.onreadystatechange = this.parent.dnf;
-      try {
-        if (this.status >= 200 && this.status <= 300
-          && this.responseType == "arraybuffer"
-          && this.getResponseHeader("Content-type").indexOf("application/x-amf") > -1
-        ) {
-          var message, body, deserializer = new amf.Deserializer(new Uint8Array(this.response));
-          try {
-            message = deserializer.readMessage();
-          } catch (e) {
-            for (i in this.promises) {
-              this.promises[i].reject({code:-1001, message:"Failed decoding the response.", detail:null, data:null});
-            }
-            this.busy = false;
-            this.message = null;
-            this.promises = null;
-            this.parent._processQueue();
-            return;
-          }
-          for (i in message.bodies) {
-            body = message.bodies[i];
-            if (body.targetURI && body.targetURI.indexOf("/onResult") > -1) {
-              if (body.targetURI == "/1/onResult") {
-                this.parent.clientId = body.data.clientId;
-                this.promises[i].resolve(null);
-              } else {
-                if (body.data.body.hasOwnProperty("code") && body.data.body.hasOwnProperty("type") && body.data.body.type < 0) {
-                  this.promises[i].reject({code: body.data.body.code, message: body.data.body.message, detail: body.data.body.detail, data:body.data.body.data});
-                } else {
-                  this.promises[i].resolve(body.data.body);
-                }
-              }
-            } else {
-              if (body.data._explicitType == "flex.messaging.messages.ErrorMessage") {
-                this.promises[i].reject({code:body.data.faultCode, message:body.data.faultString, detail:body.data.faultDetail, data:null});
-              } else {
-                this.promises[i].reject({code:-1003, message:"Unknown error message.", detail:body.data, data:null});
-              }
-            }
-          }
-        } else if (this.status == 0 || this.responseType == "text") {
-          for (i in this.promises) {
-            this.promises[i].reject({code:-1004, message:"Invalid response type.", detail:"Invalid XMLHttpRequest response status or type.", data:null});
-          }
-        } else {
-          for (i in this.promises) {
-            this.promises[i].reject({code:-1005, message:"Invalid response.", detail:"", data:null});
-          }
-        }
-      } catch (e) {
-        for (i in this.promises) {
-          this.promises[i].reject({code:-1006, message:"Unknown error.", detail:e.message, data:null});
-        }
-      }
-      this.busy = false;
-      this.message = null;
-      this.promises = null;
-      this.parent._processQueue();
-    }
+  
+  xhr.obj.open("POST", this.endpoint, true);
+
+  if (!xhr.busy) {
+      xhr.busy = true;
+      xhr.obj.setRequestHeader("Content-Type", "application/x-amf; charset=UTF-8");
+      xhr.obj.responseType = "arraybuffer";
+      xhr.obj.send(new Uint8Array(xhr.message));
   };
-  xhr.open("POST", this.endpoint, true);
+
+  xhr.obj.onload = e => {
+    xhr.obj.onload = null;
+    try {
+      if (xhr.obj.status >= 200 && xhr.obj.status <= 300
+          && xhr.obj.responseType == "arraybuffer"
+          && xhr.obj.getResponseHeader("Content-type").indexOf("application/x-amf") > -1
+      ) {
+        var message, body, deserializer = new amf.Deserializer(new Uint8Array(xhr.obj.response));
+        try {
+          message = deserializer.readMessage();
+        } catch (e) {
+          for (i in xhr.promises) {
+            xhr.promises[i].reject(new amf.Response(-1001, "Failed decoding the response.", null));
+          }
+          xhr.busy = false;
+          xhr.message = null;
+          xhr.promises = null;
+          this._processQueue();
+          return;
+        }
+        for (i in message.bodies) {
+          body = message.bodies[i];
+          if (body.targetURI && body.targetURI.indexOf("/onResult") > -1) {
+            if (body.targetURI == "/1/onResult") {
+              this.clientId = body.data.clientId;
+              xhr.promises[i].resolve(new amf.Response(0, "", null, null));
+            } else {
+              if (body.data._explicitType == "flex.messaging.messages.AcknowledgeMessage" && body.data.body._explicitType == "AMFResult") {
+                xhr.promises[i].resolve(new amf.Response(body.data.body.code, body.data.body.message, body.data.body.detail, body.data.body.data));
+              } else if (body.data.body.hasOwnProperty("code") && body.data.body.hasOwnProperty("data")) {
+                xhr.promises[i].resolve(new amf.Response(body.data.body.code, "", null, body.data.body));
+              } else if (body.data.body.hasOwnProperty("data")) {
+                xhr.promises[i].resolve(new amf.Response(0, "", null, body.data.body.data));
+              } else {
+                xhr.promises[i].reject(new amf.Response(-1002, "Unknown result message.", body.data));
+              }
+            }
+          } else {
+            if (body.data._explicitType == "flex.messaging.messages.ErrorMessage") {
+              xhr.promises[i].reject(new amf.Response(body.data.faultCode, body.data.faultString, body.data.faultDetail));
+            } else {
+              xhr.promises[i].reject(new amf.Response(-1003, "Unknown error message.", body.data));
+            }
+          }
+        }
+      } else if (xhr.obj.status == 0 || xhr.obj.responseType == "text") {
+        for (i in xhr.promises) {
+          xhr.promises[i].reject(new amf.Response(-1004, "Invalid response type.", "Invalid XMLHttpRequest response status or type."));
+        }
+      } else {
+        for (i in xhr.promises) {
+          xhr.promises[i].reject(new amf.Response(-1005, "Invalid response.", ""));
+        }
+      }
+    } catch (e) {
+      for (i in xhr.promises) {
+        xhr.promises[i].reject(new amf.Response(-1006, "Unknown error.", e.message));
+      }
+    }
+    xhr.busy = false;
+    xhr.message = null;
+    xhr.promises = null;
+    this._processQueue();
+  };
+
+  xhr.obj.onerror = e => {
+    xhr.obj.onerror = null;
+    for (i in xhr.promises) {
+      this.promises[i].reject(new amf.Response(-1006, e.message, e.message));
+    }
+    xhr.busy = false;
+    xhr.message = null;
+    xhr.promises = null;
+    this._processQueue();
+  };
 };
 
 
