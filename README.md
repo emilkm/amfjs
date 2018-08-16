@@ -117,7 +117,7 @@ p2.then((res: amf.Response) => {
 
 ```
 
-In the example above two requests are invoked, but as the first one blocks the request queue, the second one is not sent, unless the first one succeeds and the queue is released. Releasing the queue with `amfc.releaseQueue()` sends the queued requests. This may be useful to avoid strucutring user code in incovenient ways in order to achieve the same result.
+In the example above two requests are invoked, but as the first one blocks the request queue, the second one is not sent, unless the first one succeeds and the queue is released. Releasing the queue with `amfc.releaseQueue()` sends the queued requests. This may be useful to avoid structuring user code in an incovenient way in order to achieve the same.
 
 
 ## Request Batching
