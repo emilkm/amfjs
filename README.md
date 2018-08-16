@@ -83,7 +83,7 @@ If the AMF Client has not been assigned a _clientId_ by the server, a __flex.mes
 Typings cover the main usage of the library.
 
 ```typescript
-let amfClient = new amf.Client("app", "http://127.0.0.1/server/amf.php");
+let amfc = new amf.Client("app", "http://127.0.0.1/server/amf.php");
 let p = amfClient.invoke("test", "ping", []);
 
 p.then((res: amf.Response) => {
@@ -92,6 +92,57 @@ p.then((res: amf.Response) => {
     console.log(res.message);
 });
 ```
+
+## Block Request Queue
+
+The AMF Client operates a request queue. When multiple requests are sent close together, they are batched in the same AMF packet. During startup of an application one may need to do some initialisation before requests are sent. When the queue is blocked it is the responsibility of the user to release it.
+
+```typescript
+let p1 = amfc.invoke<amf.Response>("SessionService", "establishSession", [], true);
+
+p1.then((res: amf.Response) => {
+    //do something on success, and release the queue
+    amfc.releaseQueue();
+}).catch((res: amf.Response) => {
+    //do something on failure
+});
+
+let p2 = amfc.invoke<amf.Response>("DataService", "getSomeData", []);
+
+p2.then((res: amf.Response) => {
+    //do something on success
+}).catch((res: amf.Response) => {
+    //do something on failure
+});
+
+```
+
+In the example above two requests are invoked, but as the first one blocks the request queue, the second one is not sent, unless the first one succeeds and the queue is released. Releasing the queue with `amfc.releaseQueue()` sends the queued requests. This may be useful to avoid strucutring user code in incovenient ways in order to achieve the same result.
+
+
+## Request Batching
+
+Requests are sent close together are batched in the same AMF packet automatically. There is nothing the end user needs to do to achieve this. However, on occasion (for example testing) one may need to prevent a particular request be batched. This can be achieved with the fifth paramenter of the AMF Client `invoke()` method.
+
+
+```typescript
+let p1 = amfc.invoke<amf.Response>("DataService1", "getSomeData");
+
+p1.then((res: amf.Response) => {
+    //do something on success
+}).catch((res: amf.Response) => {
+    //do something on failure
+});
+
+let p2 = amfc.invoke<amf.Response>("DataService2", "getSomeData", [], false, true);
+
+p2.then((res: amf.Response) => {
+    //do something on success
+}).catch((res: amf.Response) => {
+    //do something on failure
+});
+
+In the example above, the second request is sent immediately after the first one in a separate AMF packet.
 
 
 ## History
