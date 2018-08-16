@@ -83,6 +83,7 @@ If the AMF Client has not been assigned a _clientId_ by the server, a __flex.mes
 Typings cover the main usage of the library.
 
 ```typescript
+let amfClient = new amf.Client("app", "http://127.0.0.1/server/amf.php");
 let p = amfClient.invoke("test", "ping", []);
 
 p.then((res: amf.Response) => {
