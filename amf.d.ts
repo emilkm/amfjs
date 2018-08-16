@@ -4,6 +4,7 @@
 // Definitions: https://github.com/DefinitelyTyped/DefinitelyTyped
 
 declare namespace amf {
+    var classes: any[];
     var clients: Client[];
 
     function registerClass(name: string, clazz: any);
