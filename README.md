@@ -141,6 +141,7 @@ p2.then((res: amf.Response) => {
 }).catch((res: amf.Response) => {
     //do something on failure
 });
+```
 
 In the example above, the second request is sent immediately after the first one in a separate AMF packet.
 
