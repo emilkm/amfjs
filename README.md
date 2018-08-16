@@ -95,7 +95,7 @@ p.then((res: amf.Response) => {
 
 ## Block Request Queue
 
-The AMF Client operates a request queue. When multiple requests are sent close together, they are batched in the same AMF packet. During startup of an application one may need to do some initialisation before requests are sent. When the queue is blocked it is the responsibility of the user to release it.
+The AMF Client operates a request queue. When multiple requests are sent close together, they are batched in the same AMF packet. During startup of an application one may need to do some initialisation before subsequent requests are sent. When the queue is blocked it is the responsibility of the user to release it.
 
 ```typescript
 let p1 = amfc.invoke<amf.Response>("SessionService", "establishSession", [], true);
